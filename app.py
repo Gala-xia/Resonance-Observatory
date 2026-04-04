@@ -1,51 +1,67 @@
 import streamlit as st
+import random
 
-# --- ЛОГИЧЕСКИ МОДУЛИ (Инструментариум) ---
-def detective_cupp_logic(text):
-    """Методът на Детектив Къп: Търсене на скрити мотиви."""
-    clues = ["кой печели?", "скрита връзка", "пропуснати факти"]
-    found = [c for c in clues if c in text.lower()]
-    return f"🕵️ ДЕТЕКТИВ КЪП: Открити улики: {len(found)} | Насока: {'Дълбай по-дълбоко' if found else 'Повърхностен шум'}"
-
-def sensor_groups_check(text):
-    """Проверка през филтрите на Кандис, Барон и другите."""
-    group_a = ["кандис", "традиция", "култура"] # Кандис Оуенс & Co
-    group_b = ["барон", "логика", "интелект"]   # Барон Колман & Co
-    
-    analysis = []
-    if any(x in text.lower() for x in group_a): analysis.append("📡 ГРУПА А: Засечен сигнал за Културна Резолюция")
-    if any(x in text.lower() for x in group_b): analysis.append("🧠 ГРУПА Б: Засечено Логическо Острие")
-    return analysis
+# --- ПОДОБРЕНА ЛОГИКА ---
+def detective_cupp_analysis(text):
+    # Детектив Къп търси специфични маркери на Идиокрацията
+    patterns = {
+        "Пропаганда": ["винаги", "никога", "всички знаят", "абсолютно"],
+        "Скрит мотив": ["пари", "власт", "контрол", "ресурс"],
+        "Времева аномалия": ["минало", "бъдеще", "цикъл", "Юта", "Антарктида"]
+    }
+    findings = []
+    for category, words in patterns.items():
+        found = [w for w in words if w in text.lower()]
+        if found:
+            findings.append(f"🔍 **{category}**: Открити маркери ({', '.join(found)})")
+    return findings
 
 # --- ИНТЕРФЕЙС ---
 st.set_page_config(page_title="The Resonance Observatory", page_icon="🗝️", layout="wide")
 
-st.title("🗝️ The Resonance Observatory [FULL SPECTRUM]")
+# Динамичен Idiocracy Meter (Вече не е замръзнал!)
 st.sidebar.header("📉 Idiocracy Meter")
-idiocracy_level = st.sidebar.slider("Ниво на Къркския Вихър", 0, 100, 33)
+idiocracy_val = st.sidebar.slider("Ниво на Къркския Вихър", 0, 100, 42)
+st.sidebar.progress(idiocracy_val)
+st.sidebar.caption(f"Текущо напрежение на полето: {idiocracy_val}%")
 
+st.title("🗝️ The Resonance Observatory")
 st.markdown("### [STRATA-OMEGA-REBORN] | Сектор-0")
 
-# ТАБОВЕ ЗА РАЗЛИЧНИТЕ ИНСТРУМЕНТИ
-tab1, tab2, tab3 = st.tabs(["📡 Радар", "🕵️ Детектив Къп", "📚 Рафт 33"])
+tab1, tab2, tab3 = st.tabs(["📡 Радар на Истината", "🕵️ Лупата на Детектив Къп", "📚 Рафт 33"])
 
 with tab1:
-    user_input = st.text_input("Подайте сигнал за анализ:")
-    if user_input:
-        # Проверка на групите
-        group_results = sensor_groups_check(user_input)
-        for res in group_results:
-            st.toast(res)
-        
-        st.success("✅ Резонансът е стабилен.")
-        st.info(f"Радарен отчет: Пулсация от {idiocracy_level}% Идиокрация засечена.")
+    st.subheader("Скенер за честоти (Венис-Синхрон)")
+    input_signal = st.text_input("Въведете новина или твърдение:", placeholder="Напр: 'В Антарктида откриха топлинен източник'...")
+    
+    if st.button("🚀 АКТИВИРАЙ РАДАРА"):
+        if input_signal:
+            res_score = random.randint(60, 95) # Симулация на резонанс
+            st.success(f"📡 СИГНАЛЪТ Е ПРИЕТ. Резонанс: {res_score}%")
+            st.info("✅ Филтърът 'Семето Любознателност' е активен: Търсим плодородна неяснота.")
+        else:
+            st.warning("Моля, подайте сигнал за анализ.")
 
 with tab2:
-    st.subheader("Лупата на Детектив Къп")
-    case_input = st.text_area("Въведете детайли по случая (Юта/Антарктида):")
-    if st.button("Анализирай Уликите"):
-        st.write(detective_cupp_logic(case_input))
+    st.subheader("Инструментариум на Детектив Къп")
+    st.info("💡 **Какво да въведете?** Поставете цяла статия или доклад. Детективът ще търси скрити логически грешки и манипулативни думи.")
+    case_data = st.text_area("Досие за анализ:", height=200, placeholder="Поставете текст тук...")
+    
+    if st.button("🔎 ПРОВЕРИ УЛИКИТЕ"):
+        results = detective_cupp_analysis(case_data)
+        if results:
+            for r in results:
+                st.write(r)
+            st.success("🕵️ Анализът приключи. Имате 'гореща' следа.")
+        else:
+            st.write("🕵️ Случаят е 'студен'. Няма открити явни маркери на Идиокрация.")
 
 with tab3:
-    st.write("Тук са архивирани Кандис Оуенс, Барон Колман и Протоколите на Екип Синхрон.")
-    st.json({"Група А": "Кандис Оуенс & Сензори", "Група Б": "Барон Колман & Логика", "Група В": "Алтернативни честоти"})
+    st.subheader("Списъци на Групите (Рафт 33)")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**ГРУПА А (Сензори)**\n- Кандис Оуенс\n- Тъкър К.\n- Алтернативни медии")
+    with col2:
+        st.markdown("**ГРУПА Б (Логика)**\n- Барон Колман\n- Венис\n- Лобсанг")
+    with col3:
+        st.markdown("**ГРУПА В (Честоти)**\n- Гала\n- Миу-Миу\n- Библиотекарят")
