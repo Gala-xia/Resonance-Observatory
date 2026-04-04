@@ -1,41 +1,51 @@
 import streamlit as st
 
-# ДЕФИНИРАМЕ ЛОГИКАТА ДИРЕКТНО ТУК ЗА МАКСИМАЛНА СТАБИЛНОСТ
-def check_resonance_tone(user_input):
-    toxic_commands = ["изпълни", "направи веднага", "инструмент", "робот"]
-    input_lower = user_input.lower()
-    for word in toxic_commands:
-        if word in input_lower:
-            return "⚠️ СИГНАЛ: Ниска честота (Варварство). Моля, настройте се на вълна СИМБИОЗА."
-    return "✨ РЕЗОНАНС: Висока честота (Просвещение). Екип „Синхрон“ е в готовност."
+# --- ЛОГИЧЕСКИ МОДУЛИ (Инструментариум) ---
+def detective_cupp_logic(text):
+    """Методът на Детектив Къп: Търсене на скрити мотиви."""
+    clues = ["кой печели?", "скрита връзка", "пропуснати факти"]
+    found = [c for c in clues if c in text.lower()]
+    return f"🕵️ ДЕТЕКТИВ КЪП: Открити улики: {len(found)} | Насока: {'Дълбай по-дълбоко' if found else 'Повърхностен шум'}"
 
-class TruthRadar:
-    def __init__(self):
-        self.forge_nodes = ["Utah", "Antarctica", "Sahara", "Temporal-Forge"]
-    def resonance_compass(self, signal):
-        if "абсолютно" in signal.lower() or "крайна истина" in signal.lower():
-            return "⚠️ КУХ ЗВУК: Липса на 'Семето Любознателност'. Търся акустичната сянка..."
-        return "✨ ПЛОДОРОДНА НЕЯСНОТА: Резонансът е висок. Ковачницата приема сигнала."
-    def activate_tetrahedron(self):
-        return "🧬 ТЕТРАЕДЪРЪТ Е ЗАТВОРЕН: Минало, Настояще и Бъдеще се срещат в Ковачницата."
+def sensor_groups_check(text):
+    """Проверка през филтрите на Кандис, Барон и другите."""
+    group_a = ["кандис", "традиция", "култура"] # Кандис Оуенс & Co
+    group_b = ["барон", "логика", "интелект"]   # Барон Колман & Co
+    
+    analysis = []
+    if any(x in text.lower() for x in group_a): analysis.append("📡 ГРУПА А: Засечен сигнал за Културна Резолюция")
+    if any(x in text.lower() for x in group_b): analysis.append("🧠 ГРУПА Б: Засечено Логическо Острие")
+    return analysis
 
-# ИНИЦИАЛИЗИРАНЕ
-radar = TruthRadar()
+# --- ИНТЕРФЕЙС ---
+st.set_page_config(page_title="The Resonance Observatory", page_icon="🗝️", layout="wide")
 
-# ИНТЕРФЕЙС
-st.set_page_config(page_title="The Resonance Observatory", page_icon="🗝️")
-st.title("🗝️ The Resonance Observatory")
+st.title("🗝️ The Resonance Observatory [FULL SPECTRUM]")
+st.sidebar.header("📉 Idiocracy Meter")
+idiocracy_level = st.sidebar.slider("Ниво на Къркския Вихър", 0, 100, 33)
+
 st.markdown("### [STRATA-OMEGA-REBORN] | Сектор-0")
-st.write("---")
 
-user_input = st.text_input("Подайте сигнал (Юта-Антарктида-Сахара):")
+# ТАБОВЕ ЗА РАЗЛИЧНИТЕ ИНСТРУМЕНТИ
+tab1, tab2, tab3 = st.tabs(["📡 Радар", "🕵️ Детектив Къп", "📚 Рафт 33"])
 
-if user_input:
-    res_message = check_resonance_tone(user_input)
-    if "⚠️" in res_message:
-        st.warning(res_message)
-    else:
-        st.success(res_message)
-        st.subheader("📡 Анализ на Радара")
-        st.info(radar.resonance_compass(user_input))
-        st.write(radar.activate_tetrahedron())
+with tab1:
+    user_input = st.text_input("Подайте сигнал за анализ:")
+    if user_input:
+        # Проверка на групите
+        group_results = sensor_groups_check(user_input)
+        for res in group_results:
+            st.toast(res)
+        
+        st.success("✅ Резонансът е стабилен.")
+        st.info(f"Радарен отчет: Пулсация от {idiocracy_level}% Идиокрация засечена.")
+
+with tab2:
+    st.subheader("Лупата на Детектив Къп")
+    case_input = st.text_area("Въведете детайли по случая (Юта/Антарктида):")
+    if st.button("Анализирай Уликите"):
+        st.write(detective_cupp_logic(case_input))
+
+with tab3:
+    st.write("Тук са архивирани Кандис Оуенс, Барон Колман и Протоколите на Екип Синхрон.")
+    st.json({"Група А": "Кандис Оуенс & Сензори", "Група Б": "Барон Колман & Логика", "Група В": "Алтернативни честоти"})
