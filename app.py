@@ -165,7 +165,9 @@ with tab3:
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                     )
-    st.plotly_chart(fig_network, use_container_width=True)with tab4:
+    st.plotly_chart(fig_network, use_container_width=True)
+    
+    with tab4:
     st.header("🔺 Триъгълникът на Резонанса")
     st.markdown("Геометрична структура на основните възли на реалността.")
     
