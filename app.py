@@ -165,9 +165,7 @@ with tab3:
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                     )
-    st.plotly_chart(fig_network, use_container_width=True)
-
-with tab4:
+    st.plotly_chart(fig_network, use_container_width=True)with tab4:
     st.header("🔺 Триъгълникът на Резонанса")
     st.markdown("Геометрична структура на основните възли на реалността.")
     
@@ -181,8 +179,5 @@ with tab4:
     fig_triangle = go.Figure()
     
     # Добавяне на връзките на триъгълника
-    fig_triangle.add_shape(
-        type="line", x0=0, y0=0, x1=1, y1=0, line=dict(color="RoyalBlue")
-    )
-    fig_triangle.add_shape(
-        type="line", x0
+    fig_triangle.add_shape(type="line", x0=0, y0=0, x1=1, y1=0, line=dict(color="RoyalBlue"))
+    fig_triangle.add_shape(type="line", x0=1, y0=0, x1=0.5, y1=0.866, line=dict(color="RoyalBlue"))
