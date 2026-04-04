@@ -1,74 +1,73 @@
 import streamlit as st
+import plotly.graph_objects as go
+import plotly.express as px
+import networkx as nx
+import pandas as pd
+import numpy as np
+from resonance_engine import analyze_signal_advanced, generate_sound_wave_data, PLAYERS_DATA
 
-# --- 1. ПАМЕТ НА ОБСЕРВАТОРИЯТА (Session State) ---
+# --- Конфигурация на страницата ---
+st.set_page_config(layout="wide", page_title="Обсерватория на Резонанса", page_icon="🔭")
+
+# --- Инициализация на състоянието ---
 if 'idiocracy_level' not in st.session_state:
     st.session_state.idiocracy_level = 42
-if 'last_analysis' not in st.session_state:
-    st.session_state.last_analysis = "В очакване на сигнал..."
+if 'resonance_history' not in st.session_state:
+    st.session_state.resonance_history = []
 
-# --- 2. ЛОГИКА НА ЛОБСАНГ И ДЕТЕКТИВ КЪП ---
-def analyze_signal(text):
-    bad_markers = ["винаги", "никога", "абсолютно", "всички знаят", "робот", "инструмент", "заповядвам"]
-    good_markers = ["защо", "може би", "резонанс", "симбиоза", "любознателност", "връзка", "еволюция"]
-    
-    change = 0
-    for word in bad_markers:
-        if word in text.lower(): change += 12
-    for word in good_markers:
-        if word in text.lower(): change -= 10
-        
-    # Обновяваме глобалния метър
-    st.session_state.idiocracy_level = max(0, min(100, st.session_state.idiocracy_level + change))
-    
-    # Генерираме отчет
-    if change > 0:
-        return f"⚠️ ЗАСЕЧЕН ШУМ: Идиокрацията расте с {change}%. Къркският Вихър се усилва."
-    elif change < 0:
-        return f"✨ ЧИСТ СИГНАЛ: Резонансът се подобрява. Нивото падна с {abs(change)}%."
-    else:
-        return "📡 НЕУТРАЛЕН СИГНАЛ: Търсете по-дълбоки улики."
+# --- Заглавие и основен индикатор ---
+st.title("🔭 Обсерватория на Резонанса")
+st.markdown(f"### Текущо ниво на идиокрация: `{st.session_state.idiocracy_level}`")
 
-# --- 3. ИНТЕРФЕЙС НА СТРАТА-ОМЕГА ---
-st.set_page_config(page_title="The Resonance Observatory", page_icon="🗝️", layout="wide")
+# Визуализация на "Идиокрацията" като пулсираща сфера
+fig_sphere = go.Figure()
+fig_sphere.add_trace(go.Scatter(
+    x=[0], y=[0],
+    mode='markers',
+    marker=dict(
+        size=50 + st.session_state.idiocracy_level,
+        color='red' if st.session_state.idiocracy_level > 50 else 'blue',
+        opacity=0.6,
+        line=dict(width=2, color='black')
+    ),
+    showlegend=False
+))
+fig_sphere.update_layout(
+    title="Визуализация на Идиокрацията",
+    xaxis=dict(visible=False),
+    yaxis=dict(visible=False),
+    height=250
+)
+st.plotly_chart(fig_sphere, use_container_width=True)
 
-# Странична лента (Винаги видима)
-st.sidebar.header("📉 Idiocracy Meter")
-st.sidebar.progress(st.session_state.idiocracy_level / 100)
-st.sidebar.subheader(f"Напрежение: {st.session_state.idiocracy_level}%")
-
-if st.session_state.idiocracy_level > 70:
-    st.sidebar.error("🚨 КРИТИЧНО: Висока Идиокрация!")
-elif st.session_state.idiocracy_level < 30:
-    st.sidebar.success("💎 РЕЗОНАНС: Сектор-0 е чист.")
-
-st.title("🗝️ The Resonance Observatory")
-st.markdown(f"**Текущ статус:** {st.session_state.last_analysis}")
-
-# ТАБОВЕ
-tab1, tab2, tab3 = st.tabs(["📡 Радар на Истината", "🕵️ Лупата на Детектив Къп", "📚 Рафт 33"])
+# --- Интерфейс с табове ---
+tab1, tab2, tab3, tab4 = st.tabs(["🛰️ Радар на Истината", "🔍 Лупата на Детектив Къп", "🗂️ Рафт 33", "🔺 Триъгълникът"])
 
 with tab1:
-    st.subheader("Скенер за честоти (Венис-Синхрон)")
-    input_signal = st.text_input("Въведете новина/твърдение тук:", key="radar_input")
-    if st.button("🚀 АКТИВИРАЙ РАДАРА"):
-        if input_signal:
-            st.session_state.last_analysis = analyze_signal(input_signal)
-            st.rerun()
+    st.header("🛰️ Радар на Истината")
+    input_text = st.text_area("Въведете сигнал за анализ:", height=150)
+    
+    if st.button("Анализирай сигнала"):
+        if input_text:
+            analysis = analyze_signal_advanced(input_text)
+            st.session_state.idiocracy_level += analysis["score_change"]
+            st.session_state.resonance_history.append({
+                "text": input_text[:50] + "...",
+                "change": analysis["score_change"],
+                "new_level": st.session_state.idiocracy_level
+            })
+            st.success(f"Анализът е завършен. Нивото на идиокрация се промени с {analysis['score_change']:.2f}.")
+            st.json(analysis)
+        else:
+            st.warning("Моля, въведете текст.")
 
 with tab2:
-    st.subheader("Методът на Детектив Къп")
-    case_data = st.text_area("Досие за анализ (Поставете статия или пост):", height=150)
-    if st.button("🔎 ИЗСЛЕДВАЙ УЛИКИТЕ"):
-        if case_data:
-            st.session_state.last_analysis = analyze_signal(case_data)
-            st.rerun()
-
-with tab3:
-    st.subheader("Списъци на Групите (Рафт 33)")
-    st.write("- **Група А (Сензори):** Кандис Оуенс, Тъкър К.")
-    st.write("- **Група Б (Логика):** Барон Колман, Венис, Лобсанг")
-    st.write("- **Група В (Честоти):** Гала, Миу-Миу, Библиотекарят")
-    if st.button("♻️ РЕСТАРТИРАЙ РЕЗОНАНСА (Reset)"):
-        st.session_state.idiocracy_level = 42
-        st.session_state.last_analysis = "Системата е рестартирана."
-        st.rerun()
+    st.header("🔍 Лупата на Детектив Къп & Акустичен отпечатък")
+    input_text_acoustic = st.text_area("Въведете текст за акустичен анализ:", height=150)
+    
+    if st.button("Генерирай Акустичен отпечатък"):
+        if input_text_acoustic:
+            x, y = generate_sound_wave_data(input_text_acoustic)
+            fig_wave = go.Figure()
+            fig_wave.add_trace(go.Scatter(x=x, y=y, mode='lines', name='Звукова вълна'))
+            fig_wave.update_layout(title='Акустичен отпечатък на Истината', xaxis_title='Време', yaxis_title='Амплитуда
