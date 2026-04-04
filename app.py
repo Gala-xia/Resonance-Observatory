@@ -185,12 +185,4 @@ with tab4:
         type="line", x0=0, y0=0, x1=1, y1=0, line=dict(color="RoyalBlue")
     )
     fig_triangle.add_shape(
-        type="line", x0=1, y0=0, x1=0.5, y1=0.866, line=dict(color="RoyalBlue")
-    )
-    fig_triangle.add_shape(
-        type="line", x0=0.5, y0=0.866, x1=0, y1=0, line=dict(color="RoyalBlue")
-    )
-    
-    # Добавяне на възлите
-    fig_triangle.add_trace(go.Scatter(
-        x
+        type="line", x0
