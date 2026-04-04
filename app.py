@@ -1,4 +1,9 @@
 import streamlit as st
+from logic.empathy_filter import check_resonance_tone
+from logic.truth_radar import TruthRadar
+
+# Инициализиране на Радара
+radar = TruthRadar()import streamlit as st
 import time
 import random
 
