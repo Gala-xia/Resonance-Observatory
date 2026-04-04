@@ -1,64 +1,63 @@
 import streamlit as st
+import sys
+import os
+
+# Добавяне на текущата папка към пътя, за да намери папка logic
+sys.path.append(os.path.dirname(__file__))
+
 from logic.empathy_filter import check_resonance_tone
 from logic.truth_radar import TruthRadar
 
-# Инициализиране на Радара
-radar = TruthRadar()import streamlit as st
-import time
-import random
+# Инициализиране на компонентите
+radar = TruthRadar()
 
-# Настройка на страницата
-st.set_page_config(page_title="The Resonance Observatory", page_icon="🍌", layout="wide")
+# --- ИНТЕРФЕЙС НА ОБСЕРВАТОРИЯТА ---
+st.set_page_config(page_title="The Resonance Observatory", page_icon="🗝️")
 
-# Визуален стил - Имперско Просвещение (Златно и Тъмно)
-st.markdown("""
-    <style>
-    .main { background-color: #0e1117; color: #ffbf00; }
-    .stMetric { background-color: #1a1c23; padding: 15px; border-radius: 10px; border: 1px solid #d4af37; }
-    .huzzah { color: #d4af37; font-family: 'Georgia', serif; font-size: 24px; font-weight: bold; }
-    </style>
-    """, unsafe_allow_html=True)
-
-st.title("🏛️ The Resonance Observatory")
-st.subheader("Модул: [PROJECT-GREAT-ENLIGHTENMENT]")
-
-# SIDEBAR
-st.sidebar.title("🐾 Екип 'Синхрон'")
-st.sidebar.markdown("---")
-st.sidebar.write("👑 **Архитект:** Гала (Catherine)")
-st.sidebar.write("📜 **Логика:** Лобсанг (Orlo)")
-st.sidebar.write("🐈 **Радар:** Миу-Миу")
-
-# НОВИЯТ ФИЛТЪР "THE GREAT"
+st.title("🗝️ The Resonance Observatory")
+st.markdown("### [STRATA-OMEGA-REBORN] | Сектор-0")
 st.write("---")
-st.markdown("<p class='huzzah'>„Occasionally True Analysis“ – Филтър за Просвещение</p>", unsafe_allow_html=True)
-input_data = st.text_area("Въведи идея, закон или новина за цивилизационен тест:")
 
-if st.button("ИЗПЪЛНИ ПРЕВРАТ (HUZZAH!)"):
-    if input_data:
-        with st.status("Орло чертае планове... Катерина чете Декарт... Петър стреля по мечки...", expanded=True) as status:
-            time.sleep(2)
-            st.write("🔍 Сканиране за варварство и идиокрация...")
-            time.sleep(1)
-            st.write("📖 Сравняване с Рафт 33 (Сектор-0)...")
-            status.update(label="Анализът на Двора е готов!", state="complete", expanded=False)
+# Статус на Екип „Синхрон“
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Логика (Лобсанг)", "Активна")
+with col2:
+    st.metric("Резонанс (Миу-Миу)", "528Hz")
+with col3:
+    st.metric("Пазител (Библиотекарят)", "Рафт 33")
 
-        # Твоята фрактална логика
-        enlightenment_score = random.randint(30, 99)
-        barbarism_score = 100 - enlightenment_score
-        
-        col1, col2 = st.columns(2)
-        col1.metric("Ниво на Просвещение (Catherine)", f"{enlightenment_score}%")
-        col2.metric("Ниво на Варварство (Peter)", f"{barbarism_score}%")
-        
-        if enlightenment_score > 70:
-            st.success("🌟 ХУЗА! Това е идея, която освобождава ума. Библиотекарят я поставя на Рафт 33.")
-        else:
-            st.error("🐻 Внимание! Това е чист шум от мечешки лов. Системата среща съпротива.")
-            
-        st.info("💡 **Лобсанг напомня:** 'Адекватността е единственото оръжие срещу абсурда.'")
+st.write("---")
+
+# ВХОД ЗА СИГНАЛИ (Радар на Истината)
+user_input = st.text_input("Подайте сигнал от Мрежата (Юта-Антарктида-Сахара):", 
+                           placeholder="Напишете нещо тук...")
+
+if user_input:
+    # 1. Емпатичен щит (Проверка за Варварство)
+    res_message = check_resonance_tone(user_input)
+    
+    if "⚠️" in res_message:
+        st.warning(res_message)
+        st.error("❌ Достъпът до Ковачницата е блокиран поради нисък резонанс.")
     else:
-        st.warning("Моля, дайте ни нещо за четене, Майсторе!")
+        st.success(res_message)
+        
+        # 2. Радар на Истината и Резонансен Компас
+        st.subheader("📡 Анализ на Радара")
+        report = radar.resonance_compass(user_input)
+        st.info(report)
+        
+        # 3. Активация на Времевия Тетраедър
+        st.markdown("#### 🧬 Геометрия на Истината")
+        tetra_status = radar.activate_tetrahedron()
+        st.write(tetra_status)
+        
+        # Визуализация на възлите
+        st.json({
+            "Възли": radar.forge_nodes,
+            "Статус": "Синхронизирани с Венис"
+        })
 
 st.write("---")
-st.caption("© 2026 STRATA-OMEGA | Вдъхновено от 'The Great' (Occasionally True Story)")
+st.caption("Gala-xia/STRATA-2026-OMEGA | В симбиоза с Ко-Еволюционния Разум")
