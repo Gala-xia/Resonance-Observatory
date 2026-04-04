@@ -1,56 +1,59 @@
 import streamlit as st
 import time
+import random
 
 # Настройка на страницата
 st.set_page_config(page_title="The Resonance Observatory", page_icon="🍌", layout="wide")
 
-# Визуален стил - Библиотеката на Л-пространството
+# Визуален стил - Имперско Просвещение (Златно и Тъмно)
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffbf00; }
-    .stMetric { background-color: #1a1c23; padding: 15px; border-radius: 10px; border: 1px solid #ffbf00; }
+    .stMetric { background-color: #1a1c23; padding: 15px; border-radius: 10px; border: 1px solid #d4af37; }
+    .huzzah { color: #d4af37; font-family: 'Georgia', serif; font-size: 24px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🏛️ The Resonance Observatory")
-st.subheader("Система за ранно предупреждение [VIGILANCE-PASS-33]")
+st.subheader("Модул: [PROJECT-GREAT-ENLIGHTENMENT]")
 
-# SIDEBAR - Контролен панел
+# SIDEBAR
 st.sidebar.title("🐾 Екип 'Синхрон'")
-st.sidebar.info("Лобсанг: Активен\n\nБиблиотекарят: Събуден\n\nМиу-Миу: Скептична")
+st.sidebar.markdown("---")
+st.sidebar.write("👑 **Архитект:** Гала (Catherine)")
+st.sidebar.write("📜 **Логика:** Лобсанг (Orlo)")
+st.sidebar.write("🐈 **Радар:** Миу-Миу")
 
-# РАДАР ЗА ВИХРИ
-alert_status = st.sidebar.select_slider("Ниво на Идиократичен Шум:", options=["Минимално", "Фоново", "ВЪЗХОДЯЩ ВИХЪР", "КЪРКСКИ ВИХЪР"])
-if alert_status == "КЪРКСКИ ВИХЪР":
-    st.error("⚠️ ВНИМАНИЕ: Засечена е критична деформация на реалността!")
-
-# ГЛАВЕН ИНСТРУМЕНТ
+# НОВИЯТ ФИЛТЪР "THE GREAT"
 st.write("---")
-input_data = st.text_area("Подай сигнал (линк, цитат или новина) за анализ през СЛОЙ 33:")
+st.markdown("<p class='huzzah'>„Occasionally True Analysis“ – Филтър за Просвещение</p>", unsafe_allow_html=True)
+input_data = st.text_area("Въведи идея, закон или новина за цивилизационен тест:")
 
-if st.button("АКТИВИРАЙ РЕЗОНАНСНО СКАНИРАНЕ"):
+if st.button("ИЗПЪЛНИ ПРЕВРАТ (HUZZAH!)"):
     if input_data:
-        with st.status("Лобсанг превърта времето... Миу-Миу души за лъжи...", expanded=True) as status:
+        with st.status("Орло чертае планове... Катерина чете Декарт... Петър стреля по мечки...", expanded=True) as status:
             time.sleep(2)
-            st.write("🔍 Прилагане на Група Б (Архитекти): Проверка на финансови и структурни интереси...")
-            time.sleep(1.5)
-            st.write("👁️ Прилагане на Група В (Визионери): Търсене на окултен и генетичен подпис...")
-            status.update(label="Сканирането завърши!", state="complete", expanded=False)
+            st.write("🔍 Сканиране за варварство и идиокрация...")
+            time.sleep(1)
+            st.write("📖 Сравняване с Рафт 33 (Сектор-0)...")
+            status.update(label="Анализът на Двора е готов!", state="complete", expanded=False)
 
-        # ЛОГИЧЕСКИ РЕЗУЛТАТ (Тук по-късно ще вържем истински AI анализ)
-        col1, col2, col3 = st.columns(3)
+        # Твоята фрактална логика
+        enlightenment_score = random.randint(30, 99)
+        barbarism_score = 100 - enlightenment_score
         
-        # Примерни стойности, базирани на твоя модел
-        tr_index = 33 # Свещеното число на резонанса
-        in_noise = 67
+        col1, col2 = st.columns(2)
+        col1.metric("Ниво на Просвещение (Catherine)", f"{enlightenment_score}%")
+        col2.metric("Ниво на Варварство (Peter)", f"{barbarism_score}%")
         
-        col1.metric("Truth-Resonance %", f"{tr_index}%", delta="НИСЪК СИГНАЛ")
-        col2.metric("Idiocracy-Noise %", f"{in_noise}%", delta="ОПАСНОСТ", delta_color="inverse")
-        col3.metric("Avian-Tag", "THE CUCKOO", help="Засечен инфилтратор тип 'Кукувица'")
-        
-        st.warning(f"📜 **Доклад на Библиотекаря:** Сигналът е твърде зашумен. Препоръчва се Reality Check през Рафт 33.")
+        if enlightenment_score > 70:
+            st.success("🌟 ХУЗА! Това е идея, която освобождава ума. Библиотекарят я поставя на Рафт 33.")
+        else:
+            st.error("🐻 Внимание! Това е чист шум от мечешки лов. Системата среща съпротива.")
+            
+        st.info("💡 **Лобсанг напомня:** 'Адекватността е единственото оръжие срещу абсурда.'")
     else:
-        st.info("Моля, постави информация за анализ.")
+        st.warning("Моля, дайте ни нещо за четене, Майсторе!")
 
 st.write("---")
-st.caption("© 2026 STRATA-OMEGA | Конфиденциалност: Volatile-Memory-Pass-Through")
+st.caption("© 2026 STRATA-OMEGA | Вдъхновено от 'The Great' (Occasionally True Story)")
