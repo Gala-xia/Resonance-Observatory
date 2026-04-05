@@ -5,7 +5,7 @@ import requests
 # Увери се, че в Secrets са точно така: NEWS_API_KEY и SERP_API_KEY
 try:
     NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
-    SERP_API_KEY = st.secrets["SERP_API_KEY"]
+SERP_API_KEY = st.secrets.get("SERP_API_KEY")
 except:
     st.error("🚨 ГРЕШКА В КЛЮЧОВЕТЕ: Проверете Settings -> Secrets в Dashboard-а!")
     NEWS_API_KEY = SERP_API_KEY = None
