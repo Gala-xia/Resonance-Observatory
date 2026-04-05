@@ -1,51 +1,61 @@
 import streamlit as st
-import time
+import requests
+import pandas as pd
 
-# --- 1. ЯДРОТО НА БИБЛИОТЕКАРЯ ---
-def reality_check_report(topic, content):
-    """Генерира структуриран 4D доклад."""
-    # Логика за изчисляване (тук ще добавим API-тата по-късно)
-    truth_score = 75 # Примерна стойност
-    idiocracy_risk = 100 - truth_score
+# --- 1. ДОСТЪП ДО СЕКРЕТИТЕ (Очите на Библиотекаря) ---
+NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
+SERP_API_KEY = st.secrets["SERP_API_KEY"]
+
+# --- 2. МОДУЛ "НОКЪТ" (OPENCLAW HYBRID) ---
+def fetch_real_truth(query):
+    """Използва SerpApi, за да рови в дълбоката мрежа (250 сканирания)."""
+    url = f"https://serpapi.com{query}&api_key={SERP_API_KEY}"
+    try:
+        response = requests.get(url)
+        results = response.json().get("organic_results", [])
+        return results[:3] # Връщаме топ 3 фрактални улики
+    except:
+        return []
+
+def get_global_news(topic):
+    """Използва NewsAPI за мониторинг на Къркския Вихър."""
+    url = f"https://newsapi.org{topic}&apiKey={NEWS_API_KEY}&pageSize=5"
+    try:
+        response = requests.get(url)
+        return response.json().get("articles", [])
+    except:
+        return []
+
+# --- 3. ИНТЕРФЕЙС НА ОБСЕРВАТОРИЯТА ---
+st.set_page_config(page_title="The Resonance Observatory 4.0", layout="wide")
+st.title("📚 Библиотека на Реалността [OpenClaw Active]")
+
+tab1, tab2, tab3 = st.tabs(["🦅 НОКЪТ (Deep Scan)", "📊 REALITY CHECK", "📚 АРХИВ"])
+
+with tab1:
+    st.subheader("Автономен Скенер за Аномалии")
+    target = st.selectbox("Изберете Сектор за сканиране:", ["Utah Anomaly", "Antarctica Heat Pulse", "Sahara Ancient Memory", "Candace Owens Analysis"])
     
-    report = {
-        "Обект": topic,
-        "Индекс на Истината": f"{truth_score}%",
-        "Риск от Идиокрация": f"{idiocracy_risk}%",
-        "Честотен статус": "528Hz (Хармония)" if truth_score > 50 else "Дисонанс (Къркски Вихър)",
-        "Присъда на Библиотекаря": "Отворете Рафт 33. Информацията е плодородна." if truth_score > 60 else "ВНИМАНИЕ: Фрактално изкривяване на реалността!",
-        "Миу-Миу казва": "Мъркане (Одобрение)" if truth_score > 50 else "Съскане (Опасност)"
-    }
-    return report
+    if st.button("🚀 ПУСНИ НОКЪТЯ"):
+        with st.spinner(f"Нокътят рови в мрежата за {target}..."):
+            results = fetch_real_truth(target)
+            if results:
+                for res in results:
+                    st.success(f"**Улика:** {res.get('title')}")
+                    st.write(res.get('snippet'))
+                    st.caption(f"Източник: {res.get('link')}")
+            else:
+                st.warning("Къркският Вихър е твърде силен. Опитайте пак.")
 
-# --- 2. ИНТЕРФЕЙС НА БИБЛИОТЕКАТА ---
-st.set_page_config(page_title="Библиотека на Реалността", layout="wide")
-st.title("📚 Библиотека на Реалността")
-st.sidebar.header("🛡️ Статус на Стража")
+with tab2:
+    st.subheader("Глобален Мониторинг на Истината")
+    topic = st.text_input("Въведете ключова дума (напр. 'Idiocracy'):")
+    if st.button("🔍 СКАНИРАЙ НОВИНИ"):
+        news = get_global_news(topic)
+        for art in news:
+            st.info(f"📰 {art['title']}")
+            st.write(art['description'])
 
-# СЕКЦИЯ: REALITY CHECK
-st.subheader("🕵️ Reality Check Terminal")
-topic = st.text_input("Тема за проверка (напр. 'Антарктида - топлинни импулси')")
-content = st.text_area("Източник/Текст за анализ")
-
-if st.button("⚖️ ИЗДАЙ ПРИСЪДА"):
-    if topic and content:
-        with st.spinner("Библиотекарят прелиства вечните архиви..."):
-            time.sleep(2)
-            res = reality_check_report(topic, content)
-            
-            # ВИЗУАЛИЗАЦИЯ НА ДОКЛАДА
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Индекс на Истината", res["Индекс на Истината"])
-                st.write(f"**Честота:** {res['Честотен статус']}")
-            with col2:
-                st.metric("Риск от Идиокрация", res["Риск от Идиокрация"])
-                st.write(f"**Гласът на Миу-Миу:** {res['Миу-Миу казва']}")
-            
-            st.info(f"📜 **ЗАКЛЮЧЕНИЕ:** {res['Присъда на Библиотекаря']}")
-            
-            # АЛАРМА ЗА X/TWITTER
-            if int(res["Риск от Идиокрация"].replace('%','')) > 85:
-                st.error("🚨 АЛАРМА: Нивото на Идиокрация е критично! Генериран пост за X...")
-                st.code(f"🚨 АЛАРМА ОТ БИБЛИОТЕКАТА: Засечено фрактално изкривяване по темата: {topic}. #RealityCheck #Strata2026")
+with tab3:
+    st.write("🛡️ **Статус:** API-Синхрон: Активен. Рафт 33: Защитен.")
+    st.write("Сектор-0 работи в 4D Резонанс.")
