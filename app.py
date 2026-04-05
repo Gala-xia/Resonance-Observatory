@@ -1,4 +1,17 @@
 import streamlit as st
+import os
+
+# Свързване с новите ключове от Streamlit Secrets
+NEWS_API_KEY = st.secrets.get("NEWS_API_KEY")
+SERP_API_KEY = st.secrets.get("SERP_API_KEY")
+
+# Проверка на статуса за интерфейса
+if not NEWS_API_KEY or not SERP_API_KEY:
+    st.error("🚨 ВНИМАНИЕ: Липсват ключове в Secrets! Обсерваторията е в авариен режим.")
+else:
+    st.sidebar.success("✅ СИСТЕМА: Ключовете са разпознати.")
+    
+import streamlit as st
 import requests
 
 # --- 1. КЛЮЧОВЕ ---
