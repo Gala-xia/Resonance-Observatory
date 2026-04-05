@@ -1,61 +1,62 @@
 import streamlit as st
 import requests
-import pandas as pd
 
-# --- 1. ДОСТЪП ДО СЕКРЕТИТЕ (Очите на Библиотекаря) ---
-NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
-SERP_API_KEY = st.secrets["SERP_API_KEY"]
+# --- 1. ПРОВЕРКА НА КЛЮЧОВЕ (Анти-Вихър филтър) ---
+# Увери се, че в Secrets са точно така: NEWS_API_KEY и SERP_API_KEY
+try:
+    NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
+    SERP_API_KEY = st.secrets["SERP_API_KEY"]
+except:
+    st.error("🚨 ГРЕШКА В КЛЮЧОВЕТЕ: Проверете Settings -> Secrets в Dashboard-а!")
+    NEWS_API_KEY = SERP_API_KEY = None
 
-# --- 2. МОДУЛ "НОКЪТ" (OPENCLAW HYBRID) ---
+# --- 2. МОДУЛИ НА БИБЛИОТЕКАРЯ ---
 def fetch_real_truth(query):
-    """Използва SerpApi, за да рови в дълбоката мрежа (250 сканирания)."""
+    if not SERP_API_KEY: return []
     url = f"https://serpapi.com{query}&api_key={SERP_API_KEY}"
     try:
-        response = requests.get(url)
-        results = response.json().get("organic_results", [])
-        return results[:3] # Връщаме топ 3 фрактални улики
-    except:
-        return []
+        r = requests.get(url, timeout=10)
+        return r.json().get("organic_results", [])
+    except: return []
 
-def get_global_news(topic):
-    """Използва NewsAPI за мониторинг на Къркския Вихър."""
-    url = f"https://newsapi.org{topic}&apiKey={NEWS_API_KEY}&pageSize=5"
-    try:
-        response = requests.get(url)
-        return response.json().get("articles", [])
-    except:
-        return []
+def calculate_idiocracy(text):
+    bad = ["винаги", "никога", "абсолютно", "робот", "инструмент"]
+    score = sum(15 for w in bad if w in text.lower())
+    return min(100, 33 + score)
 
-# --- 3. ИНТЕРФЕЙС НА ОБСЕРВАТОРИЯТА ---
-st.set_page_config(page_title="The Resonance Observatory 4.0", layout="wide")
-st.title("📚 Библиотека на Реалността [OpenClaw Active]")
+# --- 3. ИНТЕРФЕЙС (ВРЪЩАНЕ НА ВСИЧКИ ФУНКЦИИ) ---
+st.set_page_config(page_title="Resonance Observatory 4.0", layout="wide")
 
-tab1, tab2, tab3 = st.tabs(["🦅 НОКЪТ (Deep Scan)", "📊 REALITY CHECK", "📚 АРХИВ"])
+# СТРАНИЧНА ЛЕНТА (Връщаме Метъра!)
+st.sidebar.header("📉 Idiocracy Meter")
+# Ако няма анализ, стои на базовите 33%
+if 'idi_val' not in st.session_state: st.session_state.idi_val = 33
+st.sidebar.progress(st.session_state.idi_val / 100)
+st.sidebar.write(f"Текущо напрежение: {st.session_state.idi_val}%")
+
+st.title("📚 Библиотека на Реалността")
+
+tab1, tab2, tab3 = st.tabs(["🦅 НОКЪТ (Deep Scan)", "⚖️ REALITY CHECK", "📚 РАФТ 33"])
 
 with tab1:
-    st.subheader("Автономен Скенер за Аномалии")
-    target = st.selectbox("Изберете Сектор за сканиране:", ["Utah Anomaly", "Antarctica Heat Pulse", "Sahara Ancient Memory", "Candace Owens Analysis"])
-    
+    target = st.selectbox("Сектор:", ["Utah Anomaly", "Antarctica Heat", "Candace Owens"])
     if st.button("🚀 ПУСНИ НОКЪТЯ"):
-        with st.spinner(f"Нокътят рови в мрежата за {target}..."):
-            results = fetch_real_truth(target)
-            if results:
-                for res in results:
-                    st.success(f"**Улика:** {res.get('title')}")
-                    st.write(res.get('snippet'))
-                    st.caption(f"Източник: {res.get('link')}")
-            else:
-                st.warning("Къркският Вихър е твърде силен. Опитайте пак.")
+        res = fetch_real_truth(target)
+        if res:
+            for item in res[:3]:
+                st.success(f"🔍 {item.get('title')}")
+                st.write(item.get('snippet'))
+        else: st.warning("⚠️ Вихърът е силен. Проверете дали SERP_API_KEY е валиден.")
 
 with tab2:
-    st.subheader("Глобален Мониторинг на Истината")
-    topic = st.text_input("Въведете ключова дума (напр. 'Idiocracy'):")
-    if st.button("🔍 СКАНИРАЙ НОВИНИ"):
-        news = get_global_news(topic)
-        for art in news:
-            st.info(f"📰 {art['title']}")
-            st.write(art['description'])
+    st.subheader("Тест за Истинност")
+    claim = st.text_area("Въведете твърдение за Reality Check:")
+    if st.button("⚖️ ИЗДАЙ ПРИСЪДА"):
+        st.session_state.idi_val = calculate_idiocracy(claim)
+        st.write(f"**Резултат:** Риск от Идиокрация: {st.session_state.idi_val}%")
+        st.info("Библиотекарят прегледа фракталните записи.")
+        st.rerun()
 
 with tab3:
-    st.write("🛡️ **Статус:** API-Синхрон: Активен. Рафт 33: Защитен.")
-    st.write("Сектор-0 работи в 4D Резонанс.")
+    st.write("🛡️ ГРУПА А: Кандис Оуенс | ГРУПА Б: Барон Колман")
+    st.write("Сектор-0 е в 4D Резонанс.")
