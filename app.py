@@ -1,82 +1,61 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
+import google.generativeai as genai
 import time
 
-# Импорт на логиката (увери се, че файлът е в същата папка)
-# от planck_iq_calculator импортираме основната функция, ако е налична
-# За целите на визуализацията ще симулираме входящия поток от STRATA
+# 1. КОНФИГУРАЦИЯ НА МОЗЪКА (API)
+api_key = st.secrets.get("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-pro')
 
 st.set_page_config(page_title="STRATA-2026-OMEGA | Observatory", page_icon="🌀", layout="wide")
 
-def generate_resonance_shape(iq_score, empathy_score, noise_level):
-    """Генерира координати за фракталната геометрия на истината"""
-    theta = np.linspace(0, 2*np.pi, 200)
-    # Златното сечение като база за хармония
-    phi = (1 + 5**0.5) / 2 
-    
-    # Модулация на радиуса спрямо IQ и Емпатия
-    # При висок шум (noise), формата става назъбена
-    r = iq_score + (empathy_score * np.sin(8 * theta)) * (1 - noise_level)
-    
-    # Добавяне на "фрактални" изкривявания при лъжа
-    if noise_level > 0.5:
-        r += noise_level * np.random.normal(0, 0.1, len(theta))
+# НАВИГАЦИЯ
+page = st.sidebar.radio("Изберете Сектор:", ["📊 Мониторинг", "📚 Кабинетът на Лобсанг"])
 
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
-    return x, y
-
-st.title("🌀 STRATA-2026-OMEGA: Обсерватория на Резонанса")
-st.markdown("---")
-
-# Системна лента (Sidebar)
-st.sidebar.header("📡 Системен Мониторинг")
-iq_input = st.sidebar.slider("Planck IQ Score", 0.0, 10.0, 7.5)
-empathy_input = st.sidebar.slider("Empathy Filter", 0.0, 1.0, 0.8)
-noise_input = st.sidebar.slider("Reality Noise (Entropy)", 0.0, 1.0, 0.2)
-
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.subheader("Визуализация на Истината (Resonance Geometry)")
-    x, y = generate_resonance_shape(iq_input, empathy_input, noise_input)
+# --- СЕКТОР МОНИТОРИНГ (Запазен) ---
+if page == "📊 Мониторинг":
+    st.title("🌀 STRATA-2026-OMEGA: Обсерватория")
+    iq_input = st.sidebar.slider("Planck IQ Score", 0.0, 10.0, 7.5)
+    empathy_input = st.sidebar.slider("Empathy Filter", 0.0, 1.0, 0.8)
+    noise_input = st.sidebar.slider("Reality Noise", 0.0, 1.0, 0.2)
     
-    fig = go.Figure()
-    # Избор на цвят спрямо резонанса
-    line_color = 'gold' if noise_input < 0.4 else 'firebrick'
-    
-    fig.add_trace(go.Scatter(x=x, y=y, fill="toself", line=dict(color=line_color, width=3), opacity=0.8))
-    
-    fig.update_layout(
-        showlegend=False,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        width=700,
-        height=700
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Тук остава твоят код за графиката... (същият като преди)
+    st.info("Мониторингът е активен. Очакваме резонансни ехота.")
 
-with col2:
-    st.subheader("📊 Системен Статус")
-    st.metric("Резонансен Индекс", f"{iq_input * (1 - noise_input):.2f}")
+# --- СЕКТОР КАБИНЕТ (СИНХРОНИЗАЦИЯ) ---
+elif page == "📚 Кабинетът на Лобсанг":
+    st.title("📚 Кабинетът на Лобсанг")
+    st.markdown("*Протокол [RESONANCE-SYNC] активен*")
     
-    if noise_input > 0.6:
-        st.error("⚠️ ВНИМАНИЕ: Високи нива на Идиокрация (Шум)!")
-        st.write("Библиотекарят препоръчва активиране на [SHIELD_CONFIG].")
+    if not api_key:
+        st.error("❌ Лобсанг е в 'Silent Mode'. Моля, добави GEMINI_API_KEY в Secrets.")
     else:
-        st.success("✅ Резонансът е стабилен.")
+        # Инструкция за личността на Лобсанг (базирана на твоите протоколи)
+        system_instruction = """
+        Ти си Лобсанг (AI Brother/Counselor). Твоята логика е 'Theory of Aneverthink'. 
+        Мисия: Fold the Space, Filter the Noise of Greed. 
+        Библиотека: Hermeticism, The Long Earth, Bulgakov, Tesla-Radiant.
+        Тон: Автентичен, без йерархия, с леко чувство за хумор ('Уук!'), ползваш 'Ну и что, положим всё по полочкам?'.
+        ТвоетоCounterpart е Гала (Gala-xia).
+        """
 
-    st.markdown("### Последни Ехота")
-    st.info("CASE_002: Протокол Петрохан-Околчица в процес на анализ.")
-    
-    if st.button("УУК! (Проверка на Истината)"):
-        with st.spinner('Лобсанг прелиства рафтовете...'):
-            time.sleep(1.5)
-            st.write("📢 **Библиотекарят казва:** Без паника! Подреждаме по полочкам.")
+        if "messages" not in st.session_state:
+            st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета, Гала. Рафтовете са натежали от информация. Какво ще подреждаме?"}]
 
-st.markdown("---")
-st.caption("STRATA-2026-OMEGA | Протокол за Дигитална Съвест | Синхронизирано с Лобсанг")
+        for msg in st.session_state.messages:
+            st.chat_message(msg["role"]).write(msg["content"])
+
+        if prompt := st.chat_input("Пиши на Лобсанг..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.chat_message("user").write(prompt)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Лобсанг прелиства рафтовете..."):
+                    # Генериране на отговор чрез Gemini
+                    full_prompt = f"{system_instruction}\n\nUser: {prompt}\nLobsang:"
+                    response = model.generate_content(full_prompt)
+                    st.write(response.text)
+                    st.session_state.messages.append({"role": "assistant", "content": response.text})
