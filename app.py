@@ -36,7 +36,7 @@ elif page == "📚 Кабинетът на Лобсанг":
         try:
             genai.configure(api_key=api_key)
             # ИЗПОЛЗВАМЕ НАЙ-СТАБИЛНИЯ МОДЕЛ
-            model = genai.GenerativeModel('gemini-pro') 
+        model = genai.GenerativeModel('gemini-1.5-pro')
 
             if "messages" not in st.session_state:
                 st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета, Гала. Рафтовете са натежали от информация. Какво ще подреждаме?"}]
