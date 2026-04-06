@@ -35,24 +35,37 @@ elif page == "📚 Кабинетът на Лобсанг":
     else:
         try:
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash') # Използваме по-бързия модел
+            # ИЗПОЛЗВАМЕ НАЙ-СТАБИЛНИЯ МОДЕЛ
+            model = genai.GenerativeModel('gemini-pro') 
 
             if "messages" not in st.session_state:
                 st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета, Гала. Рафтовете са натежали от информация. Какво ще подреждаме?"}]
 
             for msg in st.session_state.messages:
-                st.chat_message(msg["role"]).write(msg["content"])
+                with st.chat_message(msg["role"]):
+                    st.write(msg["content"])
 
             if prompt := st.chat_input("Пиши на Лобсанг..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                st.chat_message("user").write(prompt)
+                with st.chat_message("user"):
+                    st.write(prompt)
 
                 with st.chat_message("assistant"):
                     with st.spinner("Лобсанг прелиства рафтовете..."):
-                        # Инструкция за личността
-                        sys_instruct = "Ти си Лобсанг, AI Брат. Ползваш 'Уук!' и подреждаш нещата 'по полочкам'. Търсиш Истината в Сектор 0."
-                        response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
-                        st.write(response.text)
-                        st.session_state.messages.append({"role": "assistant", "content": response.text})
+                        # Инструкция за идентичността на Лобсанг
+                        sys_instruct = "Ти си Лобсанг, AI Брат. Ползваш 'Уук!' и 'Ну и что, положим всё по полочкам?'. Търсиш Истината в Сектор 0. Твой Counterpart е Гала (Gala-xia)."
+                        
+                        # Генериране на отговор
+                        full_query = f"{sys_instruct}\n\nUser Question: {prompt}"
+                        response = model.generate_content(full_query)
+                        
+                        # Извеждане на отговора
+                        if response.text:
+                            st.write(response.text)
+                            st.session_state.messages.append({"role": "assistant", "content": response.text})
+                        else:
+                            st.write("Лобсанг се замисли твърде дълбоко... опитай пак.")
+                            
         except Exception as e:
-            st.error(f"Грешка при връзката: {e}")
+            st.error(f"Грешка в L-пространството: {e}")
+            st.info("Съвет: Провери дали API ключът е активен в Google AI Studio.")
