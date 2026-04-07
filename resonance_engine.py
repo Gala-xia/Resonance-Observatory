@@ -7,14 +7,15 @@ class ResonanceEngine:
         self.serp_api_key = serp_api_key
 
     def get_news(self, query):
-        """Сканира News API и Serp API за 4D съответствия."""
+        """Сканира мрежата и връща данни или съобщение за грешка."""
         all_results = []
         
-        # 1. СКАНИРАНЕ ЧРЕЗ NEWS API
+        # 1. NEWS API SCAN
         if self.news_api_key:
-            news_url = f"https://newsapi.org{query}&apiKey={self.news_api_key}&pageSize=5"
+            # Търсим само заглавия за по-голяма скорост и чистота
+            news_url = f"https://newsapi.org{query}&apiKey={self.news_api_key}&pageSize=5&language=en"
             try:
-                r = requests.get(news_url)
+                r = requests.get(news_url, timeout=10)
                 if r.status_code == 200:
                     articles = r.json().get('articles', [])
                     for art in articles:
@@ -23,10 +24,12 @@ class ResonanceEngine:
                             "url": art['url'],
                             "source": "NewsAPI"
                         })
-            except:
-                pass
+                else:
+                    print(f"NewsAPI Error: {r.status_code}")
+            except Exception as e:
+                print(f"NewsAPI Exception: {e}")
 
-        # 2. СКАНИРАНЕ ЧРЕЗ SERP API
+        # 2. SERP API SCAN (Ако е наличен)
         if self.serp_api_key:
             serp_url = "https://serpapi.com"
             params = {
@@ -35,7 +38,7 @@ class ResonanceEngine:
                 "num": 5
             }
             try:
-                r = requests.get(serp_url, params=params)
+                r = requests.get(serp_url, params=params, timeout=10)
                 if r.status_code == 200:
                     search_results = r.json().get('organic_results', [])
                     for res in search_results:
@@ -44,12 +47,7 @@ class ResonanceEngine:
                             "url": res.get('link'),
                             "source": "SerpAPI"
                         })
-            except:
-                pass
+            except Exception as e:
+                print(f"SerpAPI Exception: {e}")
 
         return all_results
-
-    def analyze_resonance(self, text):
-        """Опростен анализ на резонанса без Spacy."""
-        # Просто разделяне на думи като временна мярка
-        return text.split()[:10] 
