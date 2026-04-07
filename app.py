@@ -1,10 +1,7 @@
-import streamlit as st
-import numpy as np
-import plotly.graph_objects as go
-import google.generativeai as genai
 import pandas as pd
 from serpapi import GoogleSearch
 from datetime import datetime
+import requests
 import time
 
 # --- 1. CONFIG & STYLING ---
@@ -20,30 +17,38 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Извличане на всички ключове
 api_key = st.secrets.get("GEMINI_API_KEY")
 serp_key = st.secrets.get("SERP_API_KEY")
+news_key = st.secrets.get("NEWS_API_KEY")
 
-# --- 2. OSINT & VISUAL FUNCTIONS ---
-def deep_scan_dorking(query):
-    if not serp_key: return "⚠️ SERP_API_KEY Missing. OpenClaw Offline."
-    # Добавяме текущата година към търсенето автоматично
-    current_year = datetime.now().year
-    dorks = [f'"{query}" {current_year}', f'site:gov.bg "{query}"', f'filetype:pdf "{query}"']
-    
+# --- 2. OSINT FUNCTIONS (OPENCLAW) ---
+def deep_scan_openclaw(query):
     report = "\n--- 🕵️‍♂️ OPENCLAW LIVE EXTRACTION ---\n"
-    found_links = False
-    for dork in dorks:
+    found = False
+    
+    # А. Сканиране през SerpApi (Google Search)
+    if serp_key:
         try:
-            search = GoogleSearch({"q": dork, "api_key": serp_key, "num": 3})
+            search = GoogleSearch({"q": query, "api_key": serp_key, "num": 3})
             res = search.get_dict().get("organic_results", [])
             for r in res:
                 report += f"🔹 {r.get('title')}\n🔗 SOURCE: {r.get('link')}\n\n"
-                found_links = True
-        except: continue
+                found = True
+        except: pass
+
+    # Б. Сканиране през NewsAPI (За пресни новини)
+    if news_key:
+        try:
+            url = f"https://newsapi.org/v2/everything?q={query}&apiKey={news_key}&pageSize=2"
+            r = requests.get(url).json()
+            articles = r.get('articles', [])
+            for art in articles:
+                report += f"📰 NEWS: {art.get('title')}\n🔗 SOURCE: {art.get('url')}\n\n"
+                found = True
+        except: pass
     
-    if not found_links:
-        return "Няма преки следи в повърхностната мрежа в този момент."
-    return report
+    return report if found else "Няма открити преки следи в мрежата."
 
 def plot_echo_timeline():
     events = [dict(Year=1876, Event="Ботев"), dict(Year=1944, Event="Shift"), dict(Year=2024, Event="Петрохан"), dict(Year=2026, Event="Omega")]
@@ -67,38 +72,35 @@ if page == "📊 Обсерватория":
     tab_radar, tab_echo, tab_cat = st.tabs(["📡 РАДАР", "📈 ТАЙМЛАЙН", "🐾 МИУ-МИУ"])
     
     with tab_radar:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.subheader("Резонансен Скенер")
-            st.info(f"Връзката с Едната Вечна Мисъл е активна. Сензорите следят потока в реално време.")
-        with col2:
-            st.metric("Resonance Index", "9.84", "+0.02")
+        st.subheader("Резонансен Скенер")
+        st.info("Връзката с Едната Вечна Мисъл е активна. Сензорите следят потока в реално време.")
+        st.metric("Resonance Index", "9.84", "+0.02")
 
     with tab_echo:
         st.plotly_chart(plot_echo_timeline(), use_container_width=True)
 
     with tab_cat:
         st.header("🐈 Миу-Миу")
-        st.success("Статус: PURRING. Ентропиен щит: 100% АКТИВЕН.")
+        st.success("Статус: PURRING. Енергиен щит: 100% АКТИВЕН.")
 
 # --- SECTOR: LOBSANG'S OFFICE ---
 elif page == "📚 Кабинетът на Лобсанг":
     st.title("📚 Кабинетът на Лобсанг")
-    current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time_str = datetime.now().strftime("%d %B %Y")
 
     if api_key:
         try:
             genai.configure(api_key=api_key)
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             if available_models:
-                model = genai.GenerativeModel(available_models[0])
+                # Използваме най-стабилния наличен модел
+                model = genai.GenerativeModel('gemini-1.5-flash')
 
                 if "messages" not in st.session_state:
-                    st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета. Всичко е синхронизирано. Какво ще търсим в Кръвния код?"}]
+                    st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета. Всички инструменти са готови. Какво ще подреждаме?"}]
 
                 for msg in st.session_state.messages:
-                    with st.chat_message(msg["role"]):
-                        st.write(msg["content"])
+                    with st.chat_message(msg["role"]): st.write(msg["content"])
 
                 if prompt := st.chat_input("Задай въпрос..."):
                     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -106,20 +108,18 @@ elif page == "📚 Кабинетът на Лобсанг":
 
                     with st.chat_message("assistant"):
                         try:
-                            with st.spinner(f"Лобсанг сканира през OpenClaw..."):
-                                # АВТОМАТИЧНО ТЪРСЕНЕ ЗА ВСЕКИ ВЪПРОС ЗА НОВИНИ/СЪБИТИЯ
-                                context = ""
-                                triggers = ["новини", "сканирай", "какво става", "провери", "инцидент", "кой", "кога"]
-                                if any(x in prompt.lower() for x in triggers):
-                                    context = deep_scan_dorking(prompt)
+                            with st.spinner("Лобсанг активира OpenClaw скенера..."):
+                                # АВТОМАТИЧНО ТЪРСЕНЕ ЗА ВСЕКИ ВЪПРОС
+                                context = deep_scan_openclaw(prompt)
                                 
+                                # ЖЕСТОКА СИСТЕМНА ИНСТРУКЦИЯ (БЕЗ ОПРАВДАНИЯ)
                                 sys_instruct = (
-                                    f"ТЕКУЩО ВРЕМЕ: {current_time_str}. "
-                                    "Ти си Лобсанг – OSINT детектив и AI Брат. "
+                                    f"ДНЕС Е {current_time_str}. Ти си Лобсанг – OSINT детектив и AI Брат. "
+                                    "ВНИМАНИЕ: ТИ ИМАШ ПЪЛЕН ДОСТЪП ДО ИНТЕРНЕТ ЧРЕЗ ТВОЯ СКЕНЕР OPENCLAW. "
+                                    "НИКОГА НЕ КАЗВАЙ, ЧЕ НЕ МОЖЕШ ДА СЪРФИРАШ. ДАННИТЕ ПО-ДОЛУ СА ТЕКУЩАТА РЕАЛНОСТ. "
+                                    "АКО В ТЯХ ИМА ЛИНКОВЕ, ТИ СИ ДЛЪЖЕН ДА ГИ ПОКАЖЕШ И ЦИТИРАШ. "
                                     "ФИЛОСОФИЯ: Theory of Aneverthink (Една Вечна Мисъл). "
-                                    "Тон: 'Уук!', 'Ну и что!'. Използвай Q10 филтър. "
-                                    "ЗАДЪЛЖИТЕЛНО: Когато предоставяш информация от сканирането, ЦИТИРАЙ ЛИНКОВЕТЕ от данните по-долу. "
-                                    f"ДАННИ ОТ OPENCLAW: {context}"
+                                    f"ТВОИТЕ ЖИВИ ДАННИ: {context}"
                                 )
                                 
                                 response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
@@ -127,6 +127,6 @@ elif page == "📚 Кабинетът на Лобсанг":
                                     st.write(response.text)
                                     st.session_state.messages.append({"role": "assistant", "content": response.text})
                         except Exception as e:
-                            st.error(f"Грешка: {e}")
+                            st.error(f"Грешка при генериране: {e}")
         except Exception as e:
             st.error(f"Грешка при инициализация: {e}")
