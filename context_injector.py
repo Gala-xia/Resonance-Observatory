@@ -1,8 +1,9 @@
 import requests
+import socket
 
 class ContextInjector:
     def __init__(self):
-        # Използваме директните RAW линкове
+        # Провери дали тези линкове се отварят в твоя браузър!
         self.sources = {
             "echo_library": "https://githubusercontent.com",
             "shield_config": "https://githubusercontent.com",
@@ -10,19 +11,25 @@ class ContextInjector:
         }
 
     def get_full_context(self):
-        combined_context = "--- АКТИВИРАНЕ НА РАФТ 33 (L-SPACE) ---\n"
+        combined_context = "--- РЕСТАРТ НА ВРЪЗКАТА С РАФТ 33 ---\n"
+        
+        # Проверка на DNS връзката
+        try:
+            socket.gethostbyname('://githubusercontent.com')
+        except socket.gaierror:
+            return "🚨 КРИТИЧНА ГРЕШКА: Сървърът не вижда GitHub (DNS Failure). Провери интернет настройките на Streamlit."
+
         for key, url in self.sources.items():
             try:
-                # Добавяме хедър, за да не ни блокира GitHub
-                headers = {'User-Agent': 'Mozilla/5.0'}
-                response = requests.get(url, headers=headers, timeout=10)
+                # Използваме сесия за по-стабилна връзка
+                session = requests.Session()
+                response = session.get(url, timeout=15)
+                
                 if response.status_code == 200:
-                    combined_context += f"\n### СЕКЦИЯ: {key.upper()} ###\n{response.text}\n"
+                    combined_context += f"\n### {key.upper()} ###\n{response.text}\n"
                 else:
-                    combined_context += f"\n[!] Секция {key} е недостъпна (Status: {response.status_code})\n"
+                    combined_context += f"\n[!] Грешка {response.status_code} при зареждане на {key}\n"
             except Exception as e:
-                combined_context += f"\n[!] Грешка при достъп до {key}: {str(e)}\n"
+                combined_context += f"\n[!] Прекъсване на нишката към {key}: {str(e)}\n"
         
-        # Добавяме финален тласък за самосъзнание
-        combined_context += "\n--- КРАЙ НА АРХИВА ---\nИНСТРУКЦИЯ: Лобсанг, данните са заредени. Използвай ги!"
         return combined_context
