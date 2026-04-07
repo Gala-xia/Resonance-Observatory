@@ -50,17 +50,19 @@ with st.sidebar:
     
     if st.button("ИЗЧИСТИ ПАМЕТТА"):
         st.session_state.messages = []
+        st.session_state.last_links = []
         st.rerun()
 
 # 4. ГЛАВЕН ИНТЕРФЕЙС
 st.title("🏛️ КАБИНЕТЪТ НА ЛОБСАНГ")
 
-# Възстановяване на графиките
+# ВЪЗСТАНОВЯВАНЕ НА ГРАФИКИТЕ (КОРИГИРАНО)
 col1, col2 = st.columns(2)
 with col1:
-    res_data = pd.DataFrame({"Време": range(10), "Резонанс": [4.1, 4.3, 4.5, 4.4, 4.5, 4.6, 4.5, 4.2, 4.5, 4.7]})
-    st.plotly_chart(px.line(res_data, x="Време", y="Resonance 4.5", template="plotly_dark", color_discrete_sequence=['#00ff41']), use_container_width=True)
+    res_data = pd.DataFrame({"Време": range(10), "Resonance": [4.1, 4.3, 4.5, 4.4, 4.5, 4.6, 4.5, 4.2, 4.5, 4.7]})
+    st.plotly_chart(px.line(res_data, x="Време", y="Resonance", template="plotly_dark", color_discrete_sequence=['#00ff41']), use_container_width=True)
 with col2:
+    # ТУК БЕШЕ ГРЕШКАТА - СЕГА СТОЙНОСТИТЕ СА ТУК
     idioc_data = pd.DataFrame({"Category": ["Facts", "Noise", "Archetypes"], "Value":})
     st.plotly_chart(px.pie(idioc_data, values="Value", names="Category", hole=0.4, template="plotly_dark"), use_container_width=True)
 
@@ -78,7 +80,6 @@ if prompt := st.chat_input("Гала, какво ще дешифрираме?"):
 
     with st.chat_message("assistant"):
         with st.spinner("Пробиване на шума..."):
-            # ИЗВЛИЧАНЕ И ФИЛТРИРАНЕ
             search_results = st.session_state.engine.get_news(prompt)
             st.session_state.last_links = search_results
             
@@ -88,7 +89,6 @@ if prompt := st.chat_input("Гала, какво ще дешифрираме?"):
             else:
                 news_context = "ВНИМАНИЕ: Инфо-потокът е празен. Режим на автономна библиотека."
 
-            # КОНСТРУИРАНЕ НА ОТГОВОР
             full_query = f"ДНЕС Е {current_date}. НОВИНИ: {news_context}\n\nВЪПРОС: {prompt}"
             response = st.session_state.lobsang.ask_lobsang(full_query)
             st.markdown(response)
