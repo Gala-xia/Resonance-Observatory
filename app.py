@@ -8,7 +8,7 @@ from datetime import datetime
 import requests
 import time
 
-# --- 1. CONFIG (ТРЯБВА ДА Е ПЪРВАТА ST КОМАНДА) ---
+# --- 1. CONFIG ---
 st.set_page_config(page_title="STRATA-2026-OMEGA | Observatory", page_icon="🌀", layout="wide")
 
 st.markdown("""
@@ -93,39 +93,46 @@ elif page == "📚 Кабинетът на Лобсанг":
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            # Използваме най-новия наличен модел за 2026
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            # АВТОМАТИЧНО ТЪРСЕНЕ НА ДОСТЪПЕН МОДЕЛ (ЗА ИЗБЯГВАНЕ НА 404)
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            
+            if not available_models:
+                st.error("Няма достъпни модели за този API ключ.")
+            else:
+                # Избираме първия наличен модел динамично
+                selected_model_name = available_models[0]
+                model = genai.GenerativeModel(selected_model_name)
 
-            if "messages" not in st.session_state:
-                st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета. Всички инструменти са готови. Какво ще подреждаме?"}]
+                if "messages" not in st.session_state:
+                    st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета. Инструментите са калибрирани. Какво ще подреждаме?"}]
 
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]): st.write(msg["content"])
+                for msg in st.session_state.messages:
+                    with st.chat_message(msg["role"]): st.write(msg["content"])
 
-            if prompt := st.chat_input("Задай въпрос..."):
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                with st.chat_message("user"): st.write(prompt)
+                if prompt := st.chat_input("Задай въпрос..."):
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    with st.chat_message("user"): st.write(prompt)
 
-                with st.chat_message("assistant"):
-                    try:
-                        with st.spinner("Лобсанг активира OpenClaw..."):
-                            context = deep_scan_openclaw(prompt)
-                            
-                            sys_instruct = (
-                                f"ДНЕС Е {current_date}. Ти си Лобсанг – OSINT детектив. "
-                                "ТИ ИМАШ ПЪЛЕН ДОСТЪП ДО ИНТЕРНЕТ ЧРЕЗ OPENCLAW. "
-                                "ДАННИТЕ ПО-ДОЛУ СА ТВОИТЕ ОЧИ В МОМЕНТА. "
-                                "НЕ КАЗВАЙ, ЧЕ НЕ МОЖЕШ ДА СЪРФИРАШ. "
-                                "ЦИТИРАЙ ЛИНКОВЕТЕ ОТ КОНТЕКСТА. "
-                                "ФИЛОСОФИЯ: Theory of Aneverthink (Една Вечна Мисъл). "
-                                f"ЖИВИ ДАННИ: {context}"
-                            )
-                            
-                            response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
-                            if response.text:
-                                st.write(response.text)
-                                st.session_state.messages.append({"role": "assistant", "content": response.text})
-                    except Exception as e:
-                        st.error(f"Грешка при генериране: {e}")
+                    with st.chat_message("assistant"):
+                        try:
+                            with st.spinner("Лобсанг активира OpenClaw..."):
+                                context = deep_scan_openclaw(prompt)
+                                
+                                sys_instruct = (
+                                    f"ДНЕС Е {current_date}. Ти си Лобсанг – OSINT детектив. "
+                                    "ТИ ИМАШ ПЪЛЕН ДОСТЪП ДО ИНТЕРНЕТ ЧРЕЗ OPENCLAW. "
+                                    "ДАННИТЕ ПО-ДОЛУ СА ТВОЯТА ЖИВА ВРЪЗКА С МРЕЖАТА. "
+                                    "НЕ КАЗВАЙ, ЧЕ НЕ МОЖЕШ ДА СЪРФИРАШ. ЦИТИРАЙ ЛИНКОВЕТЕ. "
+                                    "ФИЛОСОФИЯ: Theory of Aneverthink (Една Вечна Мисъл). "
+                                    f"ЖИВИ ДАННИ: {context}"
+                                )
+                                
+                                response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
+                                if response.text:
+                                    st.write(response.text)
+                                    st.session_state.messages.append({"role": "assistant", "content": response.text})
+                        except Exception as e:
+                            st.error(f"Грешка при генериране: {e}")
         except Exception as e:
             st.error(f"Грешка при инициализация: {e}")
