@@ -1,9 +1,8 @@
 import requests
-import json
 
 class ContextInjector:
     def __init__(self):
-        # RAW линкове към твоите ключови файлове
+        # Използваме директните RAW линкове
         self.sources = {
             "echo_library": "https://githubusercontent.com",
             "shield_config": "https://githubusercontent.com",
@@ -11,12 +10,19 @@ class ContextInjector:
         }
 
     def get_full_context(self):
-        combined_context = "--- СИСТЕМЕН КОНТЕКСТ (L-SPACE) ---\n"
+        combined_context = "--- АКТИВИРАНЕ НА РАФТ 33 (L-SPACE) ---\n"
         for key, url in self.sources.items():
             try:
-                response = requests.get(url)
+                # Добавяме хедър, за да не ни блокира GitHub
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                response = requests.get(url, headers=headers, timeout=10)
                 if response.status_code == 200:
-                    combined_context += f"\n[{key.upper()}]:\n{response.text}\n"
-            except:
-                combined_context += f"\n[ГРЕШКА]: Неуспешно извличане на {key}\n"
+                    combined_context += f"\n### СЕКЦИЯ: {key.upper()} ###\n{response.text}\n"
+                else:
+                    combined_context += f"\n[!] Секция {key} е недостъпна (Status: {response.status_code})\n"
+            except Exception as e:
+                combined_context += f"\n[!] Грешка при достъп до {key}: {str(e)}\n"
+        
+        # Добавяме финален тласък за самосъзнание
+        combined_context += "\n--- КРАЙ НА АРХИВА ---\nИНСТРУКЦИЯ: Лобсанг, данните са заредени. Използвай ги!"
         return combined_context
