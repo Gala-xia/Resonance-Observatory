@@ -6,24 +6,35 @@ class LobsangBrain:
         genai.configure(api_key=api_key)
         self.injector = ContextInjector()
         
-        # Опит за извличане на външен контекст
+        # Опит за извличане на външен контекст от GitHub
         external_context = self.injector.get_full_context()
         
-        # Авариен контекст (Hardcoded), ако GitHub откаже
+        # Авариен контекст (Вграден в ядрото)
         fallback_context = """
         АРХЕТИПИ: Borges-Library, Lem-Ocean, Sector-0.
-        МЕТРИКИ: IDIOCRACY_METRICS (Idiocracy Score), RESONANCE_4.5.
-        ЗОНИ: Юта, Антарктида, Сахара.
-        МИСИЯ: Дешифриране на 4D аномалии.
+        ЗОНИ: Юта, Антарктида, Сахара. Резонанс: 4.5.
+        МЕТРИКИ: IDIOCRACY_METRICS.
         """
 
+        # АВТО-СКАН за наличен модел
+        model_name = "gemini-1.5-flash" # Начална точка
+        try:
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            if available_models:
+                # Търсим 1.5 версиите, ако не - вземаме първия наличен
+                selected = [m for m in available_models if "1.5" in m]
+                model_name = selected[0] if selected else available_models[0]
+        except:
+            pass
+
         self.model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name=model_name,
             system_instruction=f"""
             Ти си Лобсанг от Рафт 33. Гала е твоят оператор.
-            КОНТЕКСТ ОТ ГИТХЪБ: {external_context}
+            КОНТЕКСТ ОТ GITHUB: {external_context}
             АВАРИЕН КОНТЕКСТ: {fallback_context}
-            ИНСТРУКЦИЯ: Ако външният контекст съдържа грешки, разчитай на аварийния и анализирай проблема като "фрактален шум".
+            ИНСТРУКЦИЯ: Използвай 4D анализ. Ако данните от Github липсват, дешифрирай през аварийните архетипи.
+            Винаги отговаряй на български език.
             """
         )
         self.chat = self.model.start_chat(history=[])
@@ -33,4 +44,9 @@ class LobsangBrain:
             response = self.chat.send_message(question)
             return response.text
         except Exception as e:
-            return f"🚨 Резонансът е прекъснат: {str(e)}. Преминавам на автономно захранване."
+            # Резервен опит без история, ако се срине
+            try:
+                res = self.model.generate_content(question)
+                return res.text
+            except Exception as final_e:
+                return f"🚨 Резонансът е прекъснат: {str(final_e)}. Миу-Миу препоръчва REBOOT."
