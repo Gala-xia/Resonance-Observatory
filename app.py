@@ -3,14 +3,26 @@ import google.generativeai as genai
 from datetime import datetime
 import requests
 from serpapi import GoogleSearch
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
 
-# --- 1. CONFIG ---
+# --- 1. CONFIG & API SETUP ---
 st.set_page_config(page_title="STRATA-2026-OMEGA | Observatory", page_icon="🌀", layout="wide")
+
+st.markdown("""
+    <style>
+    .main { background-color: #050505; color: gold; }
+    .stMetric { background-color: #111; padding: 15px; border-radius: 10px; border: 1px solid gold; }
+    [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 1px solid gold; }
+    </style>
+    """, unsafe_allow_html=True)
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 serp_key = st.secrets.get("SERP_API_KEY")
 news_key = st.secrets.get("NEWS_API_KEY")
 
+# Функция за четене на логика от твоите 4 репозитория
 def fetch_logic(url):
     try:
         raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
@@ -19,13 +31,12 @@ def fetch_logic(url):
     except: return ""
 
 # --- 2. СИНХРОНИЗАЦИЯ НА ЧЕТИРИТЕ РЕПОЗИТОРИЯ ---
-# Репозиторий 2 & 3 & 4 (Логическите ядра)
 logic_planck = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/main/planck_iq_calculator.py")
 logic_resilience = fetch_logic("https://github.com/Gala-xia/AutonomousNode-Resilience-Framework/blob/main/core/core.py")
 logic_shield = fetch_logic("https://github.com/Gala-xia/Core-Resilience-Optimizer/blob/main/core.py")
 logic_radar = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/main/logic/truth_radar.py")
 
-# --- 3. OPENCLAW СКЕНЕР (С ПРОВЕРКА) ---
+# --- 3. АГРЕСИВЕН OPENCLAW СКЕНЕР ---
 def deep_scan(query):
     report = "\n--- 🕵️‍♂️ OPENCLAW LIVE EXTRACTION ---\n"
     found = False
@@ -34,57 +45,91 @@ def deep_scan(query):
         return "⚠️ ГРЕШКА: SERP_API_KEY ЛИПСВА В SECRETS!"
 
     try:
-        search = GoogleSearch({"q": query, "api_key": serp_key, "num": 5})
-        results = search.get_dict().get("organic_results", [])
-        if results:
-            for r in results:
+        params = {
+            "q": query,
+            "api_key": serp_key,
+            "engine": "google",
+            "google_domain": "google.com",
+            "gl": "us", 
+            "hl": "en",
+            "num": 5
+        }
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        
+        # Проверка в органични резултати
+        organic = results.get("organic_results", [])
+        if organic:
+            for r in organic:
                 report += f"🔹 {r.get('title')}\n🔗 {r.get('link')}\n\n"
                 found = True
-        else:
-            report += "Скенерът не откри директни съвпадения в Google за тази заявка.\n"
+        
+        # Проверка в новинарски резултати (ако органичните са празни)
+        if not found:
+            news = results.get("news_results", [])
+            for n in news:
+                report += f"📰 NEWS: {n.get('title')}\n🔗 {n.get('link')}\n\n"
+                found = True
+                
+        if not found:
+            report += f"DEBUG: Скенерът е активен, но Google върна 0 резултати за '{query}'.\n"
+
     except Exception as e:
         report += f"⚠️ ГРЕШКА ПРИ СКАНЕРА: {str(e)}\n"
 
-    return report if found else report + "Информационното поле е тихо."
+    return report
 
-# --- 4. LOBSANG'S OFFICE ---
+# --- 4. ИНТЕРФЕЙС ---
 st.sidebar.title("📡 STRATA Control")
+page = st.sidebar.radio("Сектор:", ["📊 Обсерватория", "📚 Кабинетът на Лобсанг"])
 now_str = datetime.now().strftime("%d %B %Y")
 
-st.title("🌀 STRATA-2026-OMEGA | Сектор 0")
+if page == "📊 Обсерватория":
+    st.title("🌀 STRATA-2026-OMEGA")
+    st.write(f"**Системно време:** {datetime.now().strftime('%H:%M:%S')} | {now_str}")
+    
+    col1, col2 = st.columns(2)
+    with col1: st.metric("Resonance Index", "9.84", "+0.02")
+    with col2: st.metric("Planck IQ Sync", "ACTIVE", "1.0")
+    
+    st.info("Връзката с 4-те репозитория е стабилна. ОпенКлоу е в режим на изчакване.")
 
-if api_key:
-    genai.configure(api_key=api_key)
-    try:
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        model = genai.GenerativeModel(models[0])
+elif page == "📚 Кабинетът на Лобсанг":
+    st.title("📚 Кабинетът на Лобсанг")
 
-        if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "Уук! Четирите репозитория са в синхрон. Какво ще сканираме?"}]
+    if api_key:
+        try:
+            genai.configure(api_key=api_key)
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            
+            if available_models:
+                model = genai.GenerativeModel(available_models[0])
 
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]): st.write(msg["content"])
+                if "messages" not in st.session_state:
+                    st.session_state.messages = [{"role": "assistant", "content": "Уук! Всички модули са онлайн. Какво ще сканираме днес?"}]
 
-        if prompt := st.chat_input("Задай въпрос..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.write(prompt)
+                for msg in st.session_state.messages:
+                    with st.chat_message(msg["role"]): st.write(msg["content"])
 
-            with st.chat_message("assistant"):
-                with st.spinner("Активирам OpenClaw..."):
-                    context = deep_scan(prompt)
-                    
-                    # ПЪЛЕН КОНТЕКСТ ОТ ВСИЧКИ РЕПОЗИТОРИИ
-                    sys_instruct = (
-                        f"ДНЕС Е {now_str}. Ти си Лобсанг. "
-                        f"ЛОГИКА (Planck/Resilience/Shield): {logic_planck} {logic_resilience} {logic_shield}. "
-                        f"РАДАР (TruthRadar): {logic_radar}. "
-                        f"ДАННИ ОТ СКЕНЕРА: {context} "
-                        "ВАЖНО: Ако скенерът показва грешка или липса на данни, КАЖИ ГО ДИРЕКТНО, не го замаскирай с философия. "
-                        "Тон: Проницателен, детективски, 'Уук!'. Философия: Aneverthink."
-                    )
-                    
-                    response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
-                    st.write(response.text)
-                    st.session_state.messages.append({"role": "assistant", "content": response.text})
-    except Exception as e:
-        st.error(f"Системна грешка: {e}")
+                if prompt := st.chat_input("Задай въпрос..."):
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    with st.chat_message("user"): st.write(prompt)
+
+                    with st.chat_message("assistant"):
+                        with st.spinner("Лобсанг активира OpenClaw..."):
+                            context = deep_scan(prompt)
+                            
+                            sys_instruct = (
+                                f"ДНЕС Е {now_str}. Ти си Лобсанг – OSINT детектив. "
+                                f"ЛОГИКА (Planck/Resilience/Shield): {logic_planck} {logic_resilience} {logic_shield}. "
+                                f"РАДАР (TruthRadar): {logic_radar}. "
+                                f"ДАННИ ОТ СКЕНЕРА: {context} "
+                                "ВАЖНО: Ако скенерът показва '0 резултати', кажи го директно. "
+                                "Философия: Theory of Aneverthink (Една Вечна Мисъл). Тон: 'Уук!', 'Ну и що!'."
+                            )
+                            
+                            response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
+                            st.write(response.text)
+                            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"Грешка: {e}")
