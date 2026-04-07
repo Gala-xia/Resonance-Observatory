@@ -4,5 +4,6 @@ numpy
 plotly
 google-generativeai
 google-search-results
+requests
 spacy
-https://github.com
+en_core_web_sm
