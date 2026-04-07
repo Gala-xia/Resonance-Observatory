@@ -1,7 +1,7 @@
 streamlit
+google-generativeai
+google-search-results
 pandas
 numpy
 plotly
-google-generativeai
-google-search-results
 requests
