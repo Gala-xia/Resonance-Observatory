@@ -56,14 +56,14 @@ with st.sidebar:
 # 4. ГЛАВЕН ИНТЕРФЕЙС
 st.title("🏛️ КАБИНЕТЪТ НА ЛОБСАНГ")
 
-# ВЪЗСТАНОВЯВАНЕ НА ГРАФИКИТЕ (КОРИГИРАНО)
+# ГРАФИКИ (ФИКСИРАНИ ЦИФРИ)
 col1, col2 = st.columns(2)
 with col1:
     res_data = pd.DataFrame({"Време": range(10), "Resonance": [4.1, 4.3, 4.5, 4.4, 4.5, 4.6, 4.5, 4.2, 4.5, 4.7]})
     st.plotly_chart(px.line(res_data, x="Време", y="Resonance", template="plotly_dark", color_discrete_sequence=['#00ff41']), use_container_width=True)
 with col2:
-    # ТУК БЕШЕ ГРЕШКАТА - СЕГА СТОЙНОСТИТЕ СА ТУК
-    idioc_data = pd.DataFrame({"Category": ["Facts", "Noise", "Archetypes"], "Value":})
+    # ФИКСИРАНО: Добавени стойности [60, 30, 10]
+    idioc_data = pd.DataFrame({"Category": ["Facts", "Noise", "Archetypes"], "Value": [60, 30, 10]})
     st.plotly_chart(px.pie(idioc_data, values="Value", names="Category", hole=0.4, template="plotly_dark"), use_container_width=True)
 
 st.markdown("---")
