@@ -9,69 +9,52 @@ from resonance_engine import ResonanceEngine
 current_date = datetime.now().strftime("%d.%m.%Y")
 st.set_page_config(page_title=f"L-SPACE | {current_date}", layout="wide")
 
-# 2. ИНИЦИАЛИЗАЦИЯ И DEBUG ПРОВЕРКА
+# 2. ИНИЦИАЛИЗАЦИЯ (С ДИРЕКТНО ЗАРЕЖДАНЕ НА КЛЮЧОВЕ)
 if "lobsang" not in st.session_state:
     try:
-        # Проверка за наличие на ключове
-        keys = ["GEMINI_API_KEY", "NEWS_API_KEY", "SERP_API_KEY"]
-        missing_keys = [k for k in keys if k not in st.secrets]
+        # Важно: Вземаме ключовете директно тук
+        g_key = st.secrets["GEMINI_API_KEY"]
+        n_key = st.secrets["NEWS_API_KEY"]
+        s_key = st.secrets["SERP_API_KEY"]
         
-        if missing_keys:
-            st.error(f"🚨 ЛИПСВАЩИ КЛЮЧОВЕ В SECRETS: {', '.join(missing_keys)}")
-            st.stop()
-            
-        st.session_state.lobsang = LobsangBrain(st.secrets["GEMINI_API_KEY"])
-        st.session_state.engine = ResonanceEngine(
-            news_api_key=st.secrets["NEWS_API_KEY"], 
-            serp_api_key=st.secrets["SERP_API_KEY"]
-        )
+        st.session_state.lobsang = LobsangBrain(g_key)
+        st.session_state.engine = ResonanceEngine(news_api_key=n_key, serp_api_key=s_key)
+        st.session_state.ready = True
     except Exception as e:
-        st.error(f"Критична грешка при старт: {e}")
-        st.stop()
+        st.error(f"Грешка при ключовете: {e}")
+        st.session_state.ready = False
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "last_links" not in st.session_state:
     st.session_state.last_links = []
 
-# 3. SIDEBAR (МЕНЮ И DEBUG)
+# 3. SIDEBAR
 with st.sidebar:
-    st.image("https://githubusercontent.com", caption=f"ДАТА: {current_date}")
+    st.image("https://githubusercontent.com", caption=f"СИСТЕМА: {current_date}")
+    st.title("🛡️ СТАТУС")
+    if st.session_state.get("ready"):
+        st.success("ОПЕРАТИВЕН ✅")
     
-    st.title("🛡️ СТАТУС НА СИСТЕМАТА")
-    st.success("API ВРЪЗКИ: АКТИВНИ ✅")
-    
-    st.title("📡 ИЗТОЧНИЦИ (LIVE)")
+    st.title("📡 ИЗТОЧНИЦИ")
     if st.session_state.last_links:
         for link in st.session_state.last_links:
             st.markdown(f"🔗 [{link['title']}]({link['url']})")
     else:
-        st.info("Очаквам сканиране...")
-    
-    if st.button("ИЗЧИСТИ ПАМЕТТА"):
-        st.session_state.messages = []
-        st.session_state.last_links = []
-        st.rerun()
+        st.info("Няма данни.")
 
-# 4. ГЛАВЕН ИНТЕРФЕЙС
+# 4. ГРАФИКИ
 st.title("🏛️ КАБИНЕТЪТ НА ЛОБСАНГ")
-
-# ГРАФИКИ (ФИКСИРАНИ ЦИФРИ)
-col1, col2 = st.columns(2)
-with col1:
-    res_data = pd.DataFrame({"Време": range(10), "Resonance": [4.1, 4.3, 4.5, 4.4, 4.5, 4.6, 4.5, 4.2, 4.5, 4.7]})
-    st.plotly_chart(px.line(res_data, x="Време", y="Resonance", template="plotly_dark", color_discrete_sequence=['#00ff41']), use_container_width=True)
-with col2:
-    # ФИКСИРАНО: Добавени стойности [60, 30, 10]
-    idioc_data = pd.DataFrame({"Category": ["Facts", "Noise", "Archetypes"], "Value": [60, 30, 10]})
-    st.plotly_chart(px.pie(idioc_data, values="Value", names="Category", hole=0.4, template="plotly_dark"), use_container_width=True)
-
-st.markdown("---")
+c1, c2 = st.columns(2)
+with c1:
+    st.plotly_chart(px.line(y=[4.1, 4.5, 4.2, 4.5], title="Resonance 4.5", template="plotly_dark", color_discrete_sequence=['#00ff41']), use_container_width=True)
+with c2:
+    st.plotly_chart(px.pie(values=[70, 20, 10], names=["Facts", "Noise", "Archetypes"], hole=0.4, template="plotly_dark"), use_container_width=True)
 
 # 5. ЧАТ ЛОГИКА
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
 if prompt := st.chat_input("Гала, какво ще дешифрираме?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -79,18 +62,20 @@ if prompt := st.chat_input("Гала, какво ще дешифрираме?"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Пробиване на шума..."):
+        with st.spinner("Пробив на информационната завеса..."):
+            # ТЕСТОВО ТЪРСЕНЕ
             search_results = st.session_state.engine.get_news(prompt)
             st.session_state.last_links = search_results
             
-            news_context = ""
-            if search_results:
-                news_context = "\n".join([f"- {r['title']} ({r['url']})" for r in search_results])
-            else:
-                news_context = "ВНИМАНИЕ: Инфо-потокът е празен. Режим на автономна библиотека."
+            # АКО Е ПРАЗНО, ОПИТВАМЕ ГЛОБАЛНО ТЪРСЕНЕ ЗА ТЕСТ
+            if not search_results:
+                search_results = st.session_state.engine.get_news("world news today")
+                st.session_state.last_links = search_results
 
-            full_query = f"ДНЕС Е {current_date}. НОВИНИ: {news_context}\n\nВЪПРОС: {prompt}"
-            response = st.session_state.lobsang.ask_lobsang(full_query)
+            news_text = "\n".join([f"- {r['title']} ({r['url']})" for r in search_results]) if search_results else "ИНФО-ПОТОКЪТ Е ПРАЗЕН."
+            
+            full_prompt = f"ДНЕС Е {current_date}. НОВИНИ:\n{news_text}\n\nВЪПРОС: {prompt}"
+            response = st.session_state.lobsang.ask_lobsang(full_query=full_prompt) # Използваме именован аргумент за сигурност
             st.markdown(response)
             
     st.session_state.messages.append({"role": "assistant", "content": response})
