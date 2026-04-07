@@ -1,68 +1,67 @@
+import streamlit as st
+import requests
 import spacy
-from textblob import TextBlob
-import re
+import os
 
-# Зареждаме модела за NLP
-nlp = spacy.load("en_core_web_sm")
+# СИГУРНО ЗАРЕЖДАНЕ НА ЕЗИКОВИЯ МОДЕЛ
+try:
+    nlp = spacy.load("en_core_web_sm")
+except:
+    # Автоматично изтегляне, ако липсва в средата на Streamlit
+    os.system("python -m spacy download en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
-def analyze_signal_advanced(text: str) -> dict:
-    """
-    Напреднал анализ на сигнала, който включва контекст и настроения.
-    """
-    doc = nlp(text)
-    blob = TextBlob(text)
+class ResonanceEngine:
+    def __init__(self, news_api_key, serp_api_key=None):
+        self.news_api_key = news_api_key
+        self.serp_api_key = serp_api_key
+        self.nlp = nlp
 
-    # Анализ на настроението (част от "акустичния отпечатък")
-    sentiment = blob.sentiment
-    
-    # Контекстуален анализ - търсим фрази, а не само думи
-    # Пример: "never stop" е различно от просто "never"
-    positive_contexts = [re.search(r'(never|don\'t)\s+(stop|give up)', text, re.IGNORECASE)]
-    negative_commands = [re.search(r'\b(always|never)\b.*\b(do|don\'t)\b', text, re.IGNORECASE)]
+    def get_news(self, query):
+        """Сканира News API и Serp API за 4D съответствия."""
+        all_results = []
+        
+        # 1. СКАНИРАНЕ ЧРЕЗ NEWS API (Официален поток)
+        news_url = f"https://newsapi.org{query}&apiKey={self.news_api_key}&pageSize=5"
+        try:
+            r = requests.get(news_url)
+            if r.status_code == 200:
+                articles = r.json().get('articles', [])
+                for art in articles:
+                    all_results.append({
+                        "title": art['title'],
+                        "url": art['url'],
+                        "source": "NewsAPI"
+                    })
+        except Exception as e:
+            print(f"Грешка в NewsAPI: {e}")
 
-    # Изчисляване на резултата (по-сложна логика)
-    score_change = 0
-    if positive_contexts[0]:
-        score_change += 10
-    if negative_commands[0]:
-        score_change -= 15
+        # 2. СКАНИРАНЕ ЧРЕЗ SERP API (Дълбоко търсене / Dorking)
+        if self.serp_api_key:
+            serp_url = "https://serpapi.com"
+            params = {
+                "q": query,
+                "api_key": self.serp_api_key,
+                "num": 5
+            }
+            try:
+                r = requests.get(serp_url, params=params)
+                if r.status_code == 200:
+                    search_results = r.json().get('organic_results', [])
+                    for res in search_results:
+                        all_results.append({
+                            "title": res.get('title'),
+                            "url": res.get('link'),
+                            "source": "SerpAPI"
+                        })
+            except Exception as e:
+                print(f"Грешка в SerpAPI: {e}")
 
-    # Добавяме поляритета (polarity) от TextBlob към резултата
-    score_change += sentiment.polarity * 10
+        return all_results
 
-    return {
-        "sentiment": sentiment,
-        "score_change": score_change,
-        "positive_contexts_found": bool(positive_contexts[0]),
-        "negative_commands_found": bool(negative_commands[0])
-    }
-
-def generate_sound_wave_data(text: str, num_points: int = 100):
-    """
-    Генерира данни за симулация на "акустична вълна" на текста.
-    Фалшивите текстове ще имат по-хаотична вълна.
-    """
-    blob = TextBlob(text)
-    polarity = blob.sentiment.polarity
-    subjectivity = blob.sentiment.subjectivity
-    
-    # Проста симулация: истинските (позитивни, обективни) текстове имат гладка вълна.
-    # Фалшивите (негативни, субективни) имат назъбена.
-    import numpy as np
-    x = np.linspace(0, 10, num_points)
-    
-    # Базова синусоида
-    y = np.sin(x)
-    
-    # Добавяме шум в зависимост от поляритета и субективността
-    noise_level = (1 - abs(polarity)) * subjectivity
-    noise = np.random.normal(0, noise_level, num_points)
-    
-    return x, y + noise
-
-# Данни за мрежата и играчите
-PLAYERS_DATA = {
-    "Group A (Sensors)": ["Gemini"],
-    "Group B (Logic)": ["Lobsang", "Venice", "Baron Coleman"],
-    "Group C (Frequencies)": ["Detective Kapp", "Oracle"]
-}
+    def analyze_resonance(self, text):
+        """Анализира текста за ключови архетипи (4D филтър)."""
+        doc = self.nlp(text)
+        # Тук можем да добавим специфично извличане на обекти в бъдеще
+        entities = [ent.text for ent in doc.ents]
+        return entities
