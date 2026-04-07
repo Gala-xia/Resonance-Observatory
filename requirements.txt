@@ -5,5 +5,3 @@ plotly
 google-generativeai
 google-search-results
 requests
-spacy
-en_core_web_sm
