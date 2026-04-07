@@ -1,25 +1,16 @@
 import streamlit as st
 import requests
-import spacy
-import os
-
-# СИГУРНО ЗАРЕЖДАНЕ НА ЕЗИКОВИЯ МОДЕЛ (SPACY)
-try:
-    nlp = spacy.load("en_core_web_sm")
-except:
-    nlp = None
 
 class ResonanceEngine:
     def __init__(self, news_api_key, serp_api_key=None):
         self.news_api_key = news_api_key
         self.serp_api_key = serp_api_key
-        self.nlp = nlp
 
     def get_news(self, query):
         """Сканира News API и Serp API за 4D съответствия."""
         all_results = []
         
-        # 1. СКАНИРАНЕ ЧРЕЗ NEWS API (Официален поток)
+        # 1. СКАНИРАНЕ ЧРЕЗ NEWS API
         if self.news_api_key:
             news_url = f"https://newsapi.org{query}&apiKey={self.news_api_key}&pageSize=5"
             try:
@@ -32,10 +23,10 @@ class ResonanceEngine:
                             "url": art['url'],
                             "source": "NewsAPI"
                         })
-            except Exception as e:
-                print(f"Грешка в NewsAPI: {e}")
+            except:
+                pass
 
-        # 2. СКАНИРАНЕ ЧРЕЗ SERP API (Дълбоко търсене / Dorking)
+        # 2. СКАНИРАНЕ ЧРЕЗ SERP API
         if self.serp_api_key:
             serp_url = "https://serpapi.com"
             params = {
@@ -53,15 +44,12 @@ class ResonanceEngine:
                             "url": res.get('link'),
                             "source": "SerpAPI"
                         })
-            except Exception as e:
-                print(f"Грешка в SerpAPI: {e}")
+            except:
+                pass
 
         return all_results
 
     def analyze_resonance(self, text):
-        """Анализира текста за ключови архетипи."""
-        if not self.nlp:
-            return ["Spacy не е зареден"]
-        doc = self.nlp(text)
-        entities = [ent.text for ent in doc.ents]
-        return entities
+        """Опростен анализ на резонанса без Spacy."""
+        # Просто разделяне на думи като временна мярка
+        return text.split()[:10] 
