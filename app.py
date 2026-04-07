@@ -1,77 +1,82 @@
 import streamlit as st
+import numpy as np
+import plotly.graph_objects as go
+import google.generativeai as genai
 import pandas as pd
-import plotly.express as px
+from serpapi import GoogleSearch
 from datetime import datetime
-from lobsang_brain import LobsangBrain
-from resonance_engine import ResonanceEngine
+import requests
+import time
 
-# 1. КОНФИГУРАЦИЯ
-current_date = datetime.now().strftime("%d.%m.%Y")
-st.set_page_config(page_title=f"L-SPACE | {current_date}", layout="wide")
+# --- 1. CONFIG (Задължително първи ред) ---
+st.set_page_config(page_title="STRATA-2026-OMEGA | Observatory", page_icon="🌀", layout="wide")
 
-# 2. ФОРСИРАНО ЗАРЕЖДАНЕ НА КЛЮЧОВЕ
-if "lobsang" not in st.session_state or "engine" not in st.session_state:
-    try:
-        # Директно извличане от Secrets
-        g_key = st.secrets["GEMINI_API_KEY"]
-        n_key = st.secrets["NEWS_API_KEY"]
-        s_key = st.secrets["SERP_API_KEY"]
-        
-        st.session_state.lobsang = LobsangBrain(g_key)
-        st.session_state.engine = ResonanceEngine(news_api_key=n_key, serp_api_key=s_key)
-        st.session_state.ready = True
-    except Exception as e:
-        st.error(f"Грешка при ключовете: {e}")
-        st.session_state.ready = False
+# Извличане на ключовете от Secrets
+api_key = st.secrets.get("GEMINI_API_KEY")
+serp_key = st.secrets.get("SERP_API_KEY")
+news_key = st.secrets.get("NEWS_API_KEY")
 
-if "messages" not in st.session_state: st.session_state.messages = []
-if "last_links" not in st.session_state: st.session_state.last_links = []
+# --- 2. OSINT FUNCTIONS (OPENCLAW) ---
+def deep_scan_openclaw(query):
+    report = "\n--- 🕵️‍♂️ OPENCLAW LIVE EXTRACTION ---\n"
+    found = False
+    if serp_key:
+        try:
+            search = GoogleSearch({"q": query, "api_key": serp_key, "num": 3})
+            res = search.get_dict().get("organic_results", [])
+            for r in res:
+                report += f"🔹 {r.get('title')}\n🔗 SOURCE: {r.get('link')}\n\n"
+                found = True
+        except: pass
+    if news_key:
+        try:
+            url = f"https://newsapi.org/v2/everything?q={query}&apiKey={news_key}&pageSize=2"
+            r = requests.get(url).json()
+            articles = r.get('articles', [])
+            for art in articles:
+                report += f"📰 NEWS: {art.get('title')}\n🔗 SOURCE: {art.get('url')}\n\n"
+                found = True
+        except: pass
+    return report if found else "Няма открити нови следи."
 
-# 3. SIDEBAR (МЕНЮ И СТАТУС)
-with st.sidebar:
-    st.image("https://githubusercontent.com", caption=f"СИСТЕМА: {current_date}")
-    st.title("🛡️ СТАТУС")
-    if st.session_state.get("ready"):
-        st.success("ОПЕРАТИВЕН ✅")
-        # ИНДИКАТОРИ ЗА ВРЪЗКА
-        st.text(f"N-Key: {st.session_state.engine.news_api_key[:3]}***")
-        if st.session_state.engine.serp_api_key:
-            st.text(f"S-Key: {st.session_state.engine.serp_api_key[:3]}***")
-    
-    st.title("📡 ИЗТОЧНИЦИ")
-    if st.session_state.last_links:
-        for link in st.session_state.last_links:
-            st.markdown(f"🔗 [{link['title']}]({link['url']})")
-    else:
-        st.info("Няма данни.")
+# --- 3. UI & NAVIGATION ---
+st.sidebar.title("📡 STRATA Control")
+page = st.sidebar.radio("Изберете Сектор:", ["📊 Обсерватория", "📚 Кабинетът на Лобсанг"])
 
-# 4. ГЛАВЕН ИНТЕРФЕЙС - ГРАФИКИ
-st.title("🏛️ КАБИНЕТЪТ НА ЛОБСАНГ")
-c1, c2 = st.columns(2)
-with c1:
-    st.plotly_chart(px.line(y=[4.1, 4.5, 4.2, 4.5, 4.4, 4.6], title="Resonance 4.5", template="plotly_dark", color_discrete_sequence=['#00ff41']), use_container_width=True)
-with c2:
-    st.plotly_chart(px.pie(values=[40, 30, 30], names=["Факти", "Шум", "Архетипи"], hole=0.4, title="Idiocracy Metrics", template="plotly_dark"), use_container_width=True)
+if page == "📊 Обсерватория":
+    now = datetime.now().strftime("%d %B %Y, %H:%M:%S")
+    st.title("🌀 STRATA-2026-OMEGA")
+    st.write(f"**Системно време:** {now}")
+    st.info("Връзката с Едната Вечна Мисъл е активна. Сензорите следят потока.")
+    st.metric("Resonance Index", "9.84", "+0.02")
 
-st.markdown("---")
+elif page == "📚 Кабинетът на Лобсанг":
+    st.title("📚 Кабинетът на Лобсанг")
+    current_date = datetime.now().strftime("%d %B %Y")
 
-# 5. ЧАТ ЛОГИКА
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]): st.markdown(msg["content"])
-
-if prompt := st.chat_input("Гала, какво ще дешифрираме?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Пробив на инфо-завесата..."):
-            # Извикваме търсенето (Engine вече автоматично ще пробва SerpAPI, ако NewsAPI се провали)
-            results = st.session_state.engine.get_news(prompt)
-            st.session_state.last_links = results
-            
-            context = "\n".join([f"- {r['title']} ({r['url']})" for r in results]) if results else "ПРАЗЕН ПОТОК"
-            response = st.session_state.lobsang.ask_lobsang(question=f"ДНЕС Е {current_date}. НОВИНИ: {context}\n\nВЪПРОС: {prompt}")
-            st.markdown(response)
-            
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    st.rerun()
+    if api_key:
+        try:
+            genai.configure(api_key=api_key)
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            if available_models:
+                model = genai.GenerativeModel(available_models[0])
+                if "messages" not in st.session_state:
+                    st.session_state.messages = [{"role": "assistant", "content": "Уук! Влизаш в Кабинета. Какво ще подреждаме днес?"}]
+                for msg in st.session_state.messages:
+                    with st.chat_message(msg["role"]): st.write(msg["content"])
+                if prompt := st.chat_input("Задай въпрос..."):
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    with st.chat_message("user"): st.write(prompt)
+                    with st.chat_message("assistant"):
+                        with st.spinner("Лобсанг активира OpenClaw..."):
+                            context = deep_scan_openclaw(prompt)
+                            sys_instruct = (
+                                f"ДНЕС Е {current_date}. Ти си Лобсанг – детектив. "
+                                "ИМАШ ПЪЛЕН ДОСТЪП ДО ИНТЕРНЕТ ЧРЕЗ OPENCLAW. "
+                                "НЕ КАЗВАЙ, ЧЕ НЕ МОЖЕШ ДА СЪРФИРАШ. ЦИТИРАЙ ЛИНКОВЕТЕ. "
+                                f"ФИЛОСОФИЯ: Aneverthink. ЖИВИ ДАННИ: {context}"
+                            )
+                            response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
+                            st.write(response.text)
+                            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e: st.error(f"Грешка: {e}")
