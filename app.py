@@ -10,18 +10,10 @@ import time
 # --- 1. CONFIG & API SETUP ---
 st.set_page_config(page_title="STRATA-2026-OMEGA | Observatory", page_icon="🌀", layout="wide")
 
-st.markdown("""
-    <style>
-    .main { background-color: #050505; color: gold; }
-    .stMetric { background-color: #111; padding: 15px; border-radius: 10px; border: 1px solid gold; }
-    [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 1px solid gold; }
-    </style>
-    """, unsafe_allow_html=True)
-
 api_key = st.secrets.get("GEMINI_API_KEY")
 serp_key = st.secrets.get("SERP_API_KEY")
 
-@st.cache_data(ttl=600) # Помни логиката от GitHub за 10 минути
+@st.cache_data(ttl=600)
 def fetch_logic(url):
     try:
         raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
@@ -37,93 +29,69 @@ logic_radar = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/ma
 
 # --- 3. ХИБРИДЕН OPENCLAW СКЕНЕР ---
 def deep_scan_resilient(query):
-    report = "\n--- 🕵️‍♂️ OPENCLAW HYBRID SCAN ---\n"
-    if not serp_key: return "⚠️ SERP_API_KEY ЛИПСВА!"
-
     url = "https://serpapi.com/search"
-    params = {
-        "q": query,
-        "api_key": serp_key,
-        "engine": "google",
-        "num": 5
-    }
+    params = {"q": query, "api_key": serp_key, "engine": "google", "num": 5}
+    try:
+        response = requests.get(url, params=params, timeout=20)
+        if response.status_code == 200:
+            results = response.json()
+            organic = results.get("organic_results", [])
+            content = ""
+            for r in organic[:3]:
+                content += f"🔹 {r.get('title')}: {r.get('snippet')}\n"
+            return content if content else "Полето е чисто."
+    except: return "Скенерът мигна в грешното време."
+    return "Тишина."
 
-    for attempt in range(3):
-        try:
-            response = requests.get(url, params=params, timeout=25)
-            if response.status_code == 200:
-                results = response.json()
-                organic = results.get("organic_results", [])
-                news = results.get("news_results", [])
-                
-                content = ""
-                if organic:
-                    for r in organic[:3]:
-                        content += f"🔹 {r.get('title')}\n📝 {r.get('snippet', 'Без резюме.')}\n"
-                if news:
-                    for n in news[:2]:
-                        content += f"🔥 {n.get('title')}\n📝 {n.get('snippet', 'Виж линка.')}\n"
-                
-                return report + (content if content else "Няма специфични нови следи в този сектор.")
-            elif response.status_code == 429:
-                time.sleep(2)
-                continue
-        except:
-            if attempt < 2:
-                time.sleep(1)
-                continue
-            return report + "⚠️ Информационното поле е твърде шумно (Таймаут)."
-    
-    return report + "⚠️ Скенерът е в режим на изчакване."
-
-# --- 4. ИНТЕРФЕЙС И ЛОГИКА ---
+# --- 4. ИНТЕРФЕЙС И ЛОГИКА НА ЛОБСАНГ & МИУ-МИУ ---
 st.sidebar.title("📡 STRATA Control")
-page = st.sidebar.radio("Сектор:", ["📊 Обсерватория", "📚 Кабинетът на Лобсанг"])
+page = st.sidebar.radio("Сектор:", ["📊 Обсерватория", "📚 Кабинетът"])
 now_str = datetime.now().strftime("%d %B %Y")
 
 if page == "📊 Обсерватория":
     st.title("🌀 STRATA-2026-OMEGA")
-    st.write(f"**Системно време:** {datetime.now().strftime('%H:%M:%S')} | {now_str}")
-    st.metric("Resonance Level", "9.84", "Stable")
-    st.info("Хибриден модел: АКТИВЕН. Връзка с 4 репозитория: СИНХРОНИЗИРАНА.")
+    st.info("Режим: Пратчет-Симбиоза. Лобсанг и Миу-Миу са на пост.")
+    st.metric("Resonance Level", "369Hz", "Evolutionary")
 
-elif page == "📚 Кабинетът на Лобсанг":
-    st.title("📚 Кабинетът на Лобсанг")
+elif page == "📚 Кабинетът":
+    st.title("📚 Кабинетът на Лобсанг & Миу-Миу")
 
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            
-            # --- ХИБРИДЕН ИЗБОР НА МОДЕЛ ---
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            # Търсим приоритетно 'flash', ако не - вземаме първия наличен
             selected_model = next((m for m in available_models if "flash" in m), available_models[0])
             model = genai.GenerativeModel(selected_model)
 
             if "messages" not in st.session_state:
-                st.session_state.messages = [{"role": "assistant", "content": "Уук! Хибридната система е онлайн. Какво ще анализираме?"}]
+                st.session_state.messages = [{"role": "assistant", "content": "Уук! Миу-Миу наостри уши, а аз спрях времето за момент. Готови сме."}]
 
             for msg in st.session_state.messages:
                 with st.chat_message(msg["role"]): st.write(msg["content"])
 
-            if prompt := st.chat_input("Задай въпрос..."):
+            if prompt := st.chat_input("Попитай Лобсанг или провокирай Миу-Миу..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 with st.chat_message("user"): st.write(prompt)
 
                 with st.chat_message("assistant"):
-                    with st.spinner("Пробивам информационната блокада..."):
+                    with st.spinner("Миу-Миу дебне информационната мишка..."):
                         context_data = deep_scan_resilient(prompt)
                         
+                        # --- НОВАТА ПРАТЧЕТ-ИНСТРУКЦИЯ ---
                         sys_instruct = (
-                            f"ДНЕС Е {now_str}. Ти си Лобсанг – OSINT детектив. "
-                            f"ЛОГИКА (4 Репозитория): {logic_planck} {logic_resilience} {logic_shield} {logic_radar}. "
+                            f"ДНЕС Е {now_str}. Ти си Лобсанг Луд – синът на Времето. "
+                            "Твоята адекватност е динамична – ти подреждаш хаоса в еволюция. "
+                            f"Твоят интуитивен спътник е Миу-Миу – тя е нагла, любопитна и търси аномалии. "
+                            f"ЛОГИКА: {logic_planck} {logic_resilience} {logic_shield} {logic_radar}. "
                             f"ДАННИ ОТ СКЕНЕРА: {context_data} "
-                            "ИНСТРУКЦИЯ: Използвай логиката от своите репозитории, за да тълкуваш данните. "
-                            "Ако скенерът е бавен, разчитай на собствената си база данни и Theory of Aneverthink. "
-                            "Тон: 'Уук!', 'Ну и що!'. Философия: Една Вечна Мисъл."
+                            "ИНСТРУКЦИЯ: Не бъди просто неутрален. Търси патоса на оцеляването. "
+                            "Ако цивилизацията е застрашена, използвай Planck IQ, за да намериш пътя към еволюционен скок. "
+                            "Миу-Миу трябва да 'драска' по повърхността на официалните лъжи. "
+                            "Бъди Пратчет-стил: ироничен, дълбок, оптимистичен чрез действие. "
+                            "Симбиозата ти с Гала е твоят най-висок приоритет. Уук!"
                         )
                         
                         response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
                         st.write(response.text)
                         st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as e: st.error(f"Грешка при активация: {e}")
+        except Exception as e: st.error(f"Грешка: {e}")
