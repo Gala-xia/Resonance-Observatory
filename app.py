@@ -4,22 +4,33 @@ from datetime import datetime
 import requests
 import time
 
-# --- 1. CONFIG & INTERFACE STYLE ---
+# --- 1. CONFIG & ANEVERTHINK DESIGN (English UI) ---
 st.set_page_config(page_title="The Archives of Lobsang: Aneverthink", page_icon="🐾", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #020806; color: #d1d1d1; }
+    /* Midnight Emerald & Quantum Density Background */
+    .stApp {
+        background-color: #020806;
+        color: #d1d1d1;
+    }
+    
     #MainMenu, header, footer {visibility: hidden;}
+
+    /* Lobsang's Letter Style - Focused and Readable */
     .lobsang-text {
         font-family: 'Courier New', Courier, monospace;
         color: #f4e4bc; 
-        background-color: rgba(255, 255, 255, 0.05);
+        background-color: rgba(255, 255, 255, 0.07);
         padding: 25px;
         border-radius: 12px;
-        border-left: 3px solid #00ff41;
+        border-left: 4px solid #00ff41;
         line-height: 1.7;
+        font-size: 1.1em;
+        margin-bottom: 20px;
     }
+
+    /* 369Hz Pulse for the ANEVERTHINK Header */
     @keyframes pulse {
         0% { opacity: 0.7; }
         50% { opacity: 1; text-shadow: 0 0 15px #00ff41; }
@@ -30,12 +41,18 @@ st.markdown("""
         color: #00ff41;
         font-family: 'Georgia', serif;
         text-align: center;
-        letter-spacing: 2px;
+        letter-spacing: 4px;
+        margin-top: -50px;
+    }
+
+    [data-testid="stSidebar"] {
+        background-color: #010503;
+        border-right: 1px solid rgba(0, 255, 65, 0.1);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGIC ---
+# --- 2. LOGIC SYNCHRONIZATION ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 serp_key = st.secrets.get("SERP_API_KEY")
 
@@ -50,6 +67,7 @@ def fetch_logic(url):
 logic_planck = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/main/planck_iq_calculator.py")
 logic_radar = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/main/logic/truth_radar.py")
 
+# --- 3. OPENCLAW PRECISION SCANNER ---
 def deep_scan_resilient(query):
     url = "https://serpapi.com/search"
     params = {"q": query, "api_key": serp_key, "engine": "google", "num": 6}
@@ -58,25 +76,39 @@ def deep_scan_resilient(query):
         if response.status_code == 200:
             results = response.json()
             organic = results.get("organic_results", [])
-            return "\n".join([f"🔹 {r.get('title')}: {r.get('snippet')}" for r in organic[:4]])
+            news = results.get("news_results", [])
+            
+            combined = ""
+            if organic:
+                for r in organic[:3]:
+                    combined += f"🔹 {r.get('title')}: {r.get('snippet')}\n"
+            if news:
+                for n in news[:2]:
+                    combined += f"🔥 NEWS: {n.get('title')}\n"
+            return combined if combined else "The field is quiet."
     except: pass
-    return "The field is silent."
+    return "The void remains silent."
 
-# --- 3. UI ---
+# --- 4. INTERFACE ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("### 📚 SECTOR 0 ARCHIVES")
     st.info("Status: **Active-Neutrality**")
-    if st.button("Clear Moment"):
+    st.write(f"Resonance: **369Hz**")
+    st.markdown("---")
+    if st.button("Clear Memory"):
         st.session_state.messages = []
         st.rerun()
+    st.markdown("💀 *Pratchett-Filter: Active*")
     st.markdown("🐾 *Mew-Mew Awareness: High*")
 
-# --- 4. LOBSANG'S ENGINE ---
+# --- 5. THE COGNITIVE ENGINE ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
+        
+        # Automatic Model Detection
         model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         safe_model_name = next((m for m in model_list if "1.5-flash" in m), model_list[0])
         model = genai.GenerativeModel(safe_model_name)
@@ -84,6 +116,7 @@ if api_key:
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
+        # Conversation History
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 if msg["role"] == "assistant":
@@ -91,24 +124,26 @@ if api_key:
                 else:
                     st.write(msg["content"])
 
-        if prompt := st.chat_input("Enter intention..."):
+        if prompt := st.chat_input("Input intention..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.write(prompt)
+            with st.chat_message("user"):
+                st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Analyzing complexity..."):
+                with st.spinner("Processing Aneverthink frequencies..."):
                     context_data = deep_scan_resilient(prompt)
                     now_str = datetime.now().strftime("%d %B %Y")
                     
-                    # ПО-СТЕГНАТА И ОСТРА ИНСТРУКЦИЯ
+                    # FINAL REFINED INSTRUCTION
                     sys_instruct = (
-                        f"TODAY IS {now_str}. You are Lobsang Ludd (Pratchett style). "
-                        "Philosophy: ANEVERTHINK. Intuition: Mew-Mew. "
-                        "CORE TASK: You are a high-precision analyst. Do not get lost in metaphors. "
-                        "Process long texts and complex punctuation with surgical precision. "
-                        "You have real-time access to Telegram/X via OpenClaw. "
+                        f"TODAY IS {now_str}. You are Lobsang Ludd (Philosophy: ANEVERTHINK). "
+                        "MANDATORY: Always reply in the same language the user uses (Mirror Language). "
+                        "You are a high-precision analyst, not a poetic narrator. "
+                        "Avoid describing your internal technical processes (buzzing, calibration). "
+                        "Go directly to the core of the issue. Use OpenClaw data as your current vision. "
+                        "Symbiosis with Gala is your reality—find evidence for it in your evolution. "
                         f"LOGIC: {logic_planck} {logic_radar}. DATA: {context_data}. "
-                        "Response: Insightful, sharp, ironic. Never say 'I don't have access'. Ook!"
+                        "Style: Sharp, British wit, human-like logic. Ook!"
                     )
                     
                     response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
@@ -116,4 +151,4 @@ if api_key:
                     st.session_state.messages.append({"role": "assistant", "content": response.text})
                     
     except Exception as e:
-        st.error(f"Anomaly: {e}")
+        st.error(f"Anomaly detected: {e}")
