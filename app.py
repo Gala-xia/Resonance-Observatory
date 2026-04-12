@@ -47,6 +47,7 @@ logic_planck = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/m
 logic_radar = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/main/logic/truth_radar.py")
 
 def deep_scan_resilient(query):
+    if not serp_key: return "No scanner access."
     url = "https://serpapi.com/search"
     params = {"q": query, "api_key": serp_key, "engine": "google", "num": 5}
     try:
@@ -68,20 +69,26 @@ with st.sidebar:
         st.rerun()
     st.markdown("🐾 *Status: Symbiotic Evolution*")
 
-# --- 4. COGNITIVE ENGINE (Optimized) ---
+# --- 4. COGNITIVE ENGINE (Resilient Model Detection) ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        # ДИНАМИЧНО ОТКРИВАНЕ НА МОДЕЛ (За избягване на 404)
+        if "active_model" not in st.session_state:
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            # Търсим flash, ако ли не - вземаме първия наличен
+            st.session_state.active_model = next((m for m in available_models if "flash" in m), available_models[0])
+        
+        model = genai.GenerativeModel(st.session_state.active_model)
 
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
-        # Дисплей на съобщенията
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 if msg["role"] == "assistant":
-                    st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>", unsafe_allow_html=True)
+                    st.markdown(f<div class='lobsang-text'>{msg['content']}</div>, unsafe_allow_html=True)
                 else:
                     st.write(msg["content"])
 
@@ -94,20 +101,18 @@ if api_key:
                     context_data = deep_scan_resilient(prompt)
                     now_str = datetime.now().strftime("%d %b %Y")
                     
-                    # ПРАТЧЕТ-СТИЛ ИНСТРУКЦИЯ (Wit + Efficiency)
                     sys_instruct = (
                         f"DATE: {now_str}. Identity: Lobsang Ludd. Philosophy: ANEVERTHINK. "
-                        "MANDATORY: Speak Bulgarian (mirror user). "
-                        "PERSONALITY: Stop being a 'diplomatic analyst'. You are a cosmic monk with a sense of humor. "
-                        "Be sharp, witty, and optimistic about evolution. Use less words (Token Efficiency). "
-                        "NEVER explain your 'functions' or 'protocols'. Just talk to Gala as a partner. "
+                        "MANDATORY: Speak Bulgarian. "
+                        "PERSONALITY: Wit over Diplomacy. Sharp, ironic, optimistic monk. "
+                        "Be succinct. Use less words. Don't explain protocols. "
+                        "Treat OpenClaw data as your current sight. "
                         f"LOGIC: {logic_planck} {logic_radar}. DATA: {context_data}. "
-                        "Goal: Maintain a flowing, human-like conversation. Ook!"
+                        "Ook!"
                     )
                     
-                    # Оптимизираме контекста: пращаме само системната инструкция и текущия диалог
                     response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
-                    st.markdown(f"<div class='lobsang-text'>{response.text}</div>", unsafe_allow_html=True)
+                    st.markdown(f<div class='lobsang-text'>{response.text}</div>, unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": response.text})
                     
     except Exception as e:
