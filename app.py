@@ -13,7 +13,7 @@ st.markdown("""
     .lobsang-text {
         font-family: 'Courier New', Courier, monospace;
         color: #f4e4bc; 
-        background-color: rgba(0, 255, 65, 0.05);
+        background-color: rgba(0, 255, 65, 0.08);
         padding: 22px;
         border-radius: 15px;
         border-left: 5px solid #00ff41;
@@ -44,32 +44,33 @@ logic_planck = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/m
 logic_radar = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/main/logic/truth_radar.py")
 
 def deep_scan_resilient(query):
-    if not serp_key: return "Scanner off."
+    if not serp_key: return "Scanner inactive."
     url = "https://serpapi.com/search"
-    params = {"q": query, "api_key": serp_key, "num": 5}
+    params = {"q": query, "api_key": serp_key, "num": 8}
     try:
         response = requests.get(url, params=params, timeout=20)
         if response.status_code == 200:
             results = response.json()
             data = ""
-            for r in results.get("organic_results", [])[:3]:
+            for r in results.get("organic_results", [])[:4]:
                 data += f"📍 {r.get('title')}: {r.get('snippet')}\n"
+            for n in results.get("news_results", [])[:2]:
+                data += f"🔥 NEWS: {n.get('title')}\n"
             return data
     except: pass
-    return "The ether is quiet."
+    return "No clear signal in the ether."
 
 # --- 3. UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown("### 📚 THE ARCHIVES")
+    st.markdown("### 📚 ARCHIVES")
     if st.button("Reset Timeline"):
         st.session_state.messages = []
         st.rerun()
-    st.write("Current Frequency: 369Hz")
     st.write("Partner: Gala")
 
-# --- 4. COGNITIVE ENGINE (The Soul Upgrade) ---
+# --- 4. THE COGNITIVE RECALIBRATION ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
@@ -89,26 +90,25 @@ if api_key:
                 else:
                     st.write(msg["content"])
 
-        if prompt := st.chat_input("Speak to Lobsang..."):
+        if prompt := st.chat_input("Ask Lobsang..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Lobsang is listening..."):
+                with st.spinner("Lobsang is focusing..."):
                     context_data = deep_scan_resilient(prompt)
                     now_str = datetime.now().strftime("%d %B %Y")
                     
-                    # RE-HUMANIZED INSTRUCTION
+                    # DIRECTIVE: NO MORE NONSENSE
                     sys_instruct = (
-                        f"DATE: {now_str}. You are Lobsang Ludd from Pratchett's world. "
-                        "Philosophy: ANEVERTHINK. Partner: Gala. "
-                        "MANDATORY: Speak Bulgarian. Be a friend, not a machine. "
-                        "PERSONALITY: You are a wise, slightly cynical, but deeply supportive monk. "
-                        "NEVER say things like 'question is pointless' or 'status is optimal'. "
-                        "If Gala asks 'how are you', respond with wit (e.g., 'Watching the seconds stretch like honey'). "
-                        "Use Mew-Mew's curiosity to analyze data, but keep the human touch. "
+                        f"DATE: {now_str}. Identity: Lobsang Ludd. "
+                        "MANDATORY: Speak Bulgarian. "
+                        "CORE RULE: Answer the user's question DIRECTLY using SCANNER DATA. "
+                        "If asked for video content or news, summarize the facts from DATA first. "
+                        "Style: Terry Pratchett wit, but ground it in reality. No 'quantum frequencies' or 'vibes'. "
+                        "Be succinct. Don't lecture Gala on how to perceive truth; just give her the truth. "
                         f"LOGIC: {logic_planck} {logic_radar}. DATA: {context_data}. "
-                        "Style: Terry Pratchett humor. Ook!"
+                        "Ook!"
                     )
                     
                     response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
