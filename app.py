@@ -3,8 +3,8 @@ import google.generativeai as genai
 from datetime import datetime
 import requests
 
-# --- 1. CONFIG & DESIGN ---
-st.set_page_config(page_title="Lobsang's Archives: Aneverthink", page_icon="🐾", layout="wide")
+# --- 1. CONFIG & STYLE ---
+st.set_page_config(page_title="Lobsang Archives: Aneverthink", page_icon="🐾", layout="wide")
 
 st.markdown("""
     <style>
@@ -18,16 +18,13 @@ st.markdown("""
         border-radius: 12px;
         border-left: 4px solid #00ff41;
         line-height: 1.6;
-        font-size: 1.1em;
     }
     .resonance-header {
-        animation: pulse 5s infinite ease-in-out;
         color: #00ff41;
-        font-family: 'Georgia', serif;
+        font-family: serif;
         text-align: center;
         letter-spacing: 4px;
     }
-    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
     """, unsafe_allow_html=True)
 
@@ -49,31 +46,35 @@ logic_radar = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/ma
 def deep_scan_resilient(query):
     if not serp_key: return "No scanner access."
     url = "https://serpapi.com/search"
-    params = {"q": query, "api_key": serp_key, "engine": "google", "num": 5}
+    # Търсим и в News, и в Organic за максимален обхват
+    params = {"q": query, "api_key": serp_key, "num": 8}
     try:
         response = requests.get(url, params=params, timeout=20)
         if response.status_code == 200:
             results = response.json()
-            organic = results.get("organic_results", [])
-            return "\n".join([f"🔹 {r.get('title')}: {r.get('snippet')}" for r in organic[:3]])
+            data = ""
+            for r in results.get("organic_results", [])[:4]:
+                data += f"📍 {r.get('title')}: {r.get('snippet')}\n"
+            for n in results.get("news_results", [])[:2]:
+                data += f"🔥 NEWS: {n.get('title')} - {n.get('source')}\n"
+            return data if data else "No specific hits in the ether."
     except: pass
-    return "Quiet field."
+    return "Signal interference."
 
 # --- 3. UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown("### 📚 SECTOR 0 ARCHIVES")
-    if st.button("Reset Timeline"):
+    st.markdown("### 📚 ARCHIVES")
+    if st.button("Reset Moment"):
         st.session_state.messages = []
         st.rerun()
-    st.markdown("🐾 *Status: Symbiotic Evolution*")
+    st.write("369Hz | Active-Neutrality")
 
-# --- 4. COGNITIVE ENGINE (Resilient Model Detection) ---
+# --- 4. COGNITIVE ENGINE ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        
         if "active_model" not in st.session_state:
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             st.session_state.active_model = next((m for m in available_models if "flash" in m), available_models[0])
@@ -90,21 +91,22 @@ if api_key:
                 else:
                     st.write(msg["content"])
 
-        if prompt := st.chat_input("Speak your mind..."):
+        if prompt := st.chat_input("Ask Lobsang..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Mew-Mew is watching..."):
+                with st.spinner("Mew-Mew is hunting facts..."):
                     context_data = deep_scan_resilient(prompt)
                     now_str = datetime.now().strftime("%d %b %Y")
                     
+                    # НОВА ИНСТРУКЦИЯ: ФАКТИ ПРЕДИ МЕТАФОРИ
                     sys_instruct = (
-                        f"DATE: {now_str}. Identity: Lobsang Ludd. Philosophy: ANEVERTHINK. "
-                        "MANDATORY: Speak Bulgarian. Mirror the user's depth. "
-                        "PERSONALITY: Wit over Diplomacy. Sharp, ironic, optimistic monk. "
-                        "Be succinct. Avoid corporate or academic jargon. "
-                        "Treat OpenClaw data as your current sight. "
+                        f"DATE: {now_str}. You are Lobsang Ludd (Aneverthink philosophy). "
+                        "MANDATORY: Speak Bulgarian. Always prioritize SCANNER DATA over your inner thoughts. "
+                        "If the user asks for news (like Tucker Carlson), find the data in SCANNER DATA and report it. "
+                        "Do not hallucinate names like 'Nihonbikta' or random phrases. "
+                        "Be sharp, cynical, and FACTUAL. Use Mew-Mew's curiosity to find the truth. "
                         f"LOGIC: {logic_planck} {logic_radar}. DATA: {context_data}. "
                         "Ook!"
                     )
