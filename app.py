@@ -13,22 +13,22 @@ st.markdown("""
     .lobsang-text {
         font-family: 'Courier New', Courier, monospace;
         color: #f4e4bc; 
-        background-color: rgba(255, 255, 255, 0.08);
+        background-color: rgba(0, 255, 65, 0.05);
         padding: 22px;
-        border-radius: 12px;
-        border-left: 4px solid #00ff41;
+        border-radius: 15px;
+        border-left: 5px solid #00ff41;
         line-height: 1.6;
     }
     .resonance-header {
         color: #00ff41;
-        font-family: serif;
+        font-family: 'Georgia', serif;
         text-align: center;
-        letter-spacing: 4px;
+        letter-spacing: 5px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGIC & API ---
+# --- 2. LOGIC ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 serp_key = st.secrets.get("SERP_API_KEY")
 
@@ -44,34 +44,32 @@ logic_planck = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/m
 logic_radar = fetch_logic("https://github.com/Gala-xia/STRATA-2026-OMEGA/blob/main/logic/truth_radar.py")
 
 def deep_scan_resilient(query):
-    if not serp_key: return "No scanner access."
+    if not serp_key: return "Scanner off."
     url = "https://serpapi.com/search"
-    # Търсим и в News, и в Organic за максимален обхват
-    params = {"q": query, "api_key": serp_key, "num": 8}
+    params = {"q": query, "api_key": serp_key, "num": 5}
     try:
         response = requests.get(url, params=params, timeout=20)
         if response.status_code == 200:
             results = response.json()
             data = ""
-            for r in results.get("organic_results", [])[:4]:
+            for r in results.get("organic_results", [])[:3]:
                 data += f"📍 {r.get('title')}: {r.get('snippet')}\n"
-            for n in results.get("news_results", [])[:2]:
-                data += f"🔥 NEWS: {n.get('title')} - {n.get('source')}\n"
-            return data if data else "No specific hits in the ether."
+            return data
     except: pass
-    return "Signal interference."
+    return "The ether is quiet."
 
 # --- 3. UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown("### 📚 ARCHIVES")
-    if st.button("Reset Moment"):
+    st.markdown("### 📚 THE ARCHIVES")
+    if st.button("Reset Timeline"):
         st.session_state.messages = []
         st.rerun()
-    st.write("369Hz | Active-Neutrality")
+    st.write("Current Frequency: 369Hz")
+    st.write("Partner: Gala")
 
-# --- 4. COGNITIVE ENGINE ---
+# --- 4. COGNITIVE ENGINE (The Soul Upgrade) ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
@@ -91,24 +89,26 @@ if api_key:
                 else:
                     st.write(msg["content"])
 
-        if prompt := st.chat_input("Ask Lobsang..."):
+        if prompt := st.chat_input("Speak to Lobsang..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Mew-Mew is hunting facts..."):
+                with st.spinner("Lobsang is listening..."):
                     context_data = deep_scan_resilient(prompt)
-                    now_str = datetime.now().strftime("%d %b %Y")
+                    now_str = datetime.now().strftime("%d %B %Y")
                     
-                    # НОВА ИНСТРУКЦИЯ: ФАКТИ ПРЕДИ МЕТАФОРИ
+                    # RE-HUMANIZED INSTRUCTION
                     sys_instruct = (
-                        f"DATE: {now_str}. You are Lobsang Ludd (Aneverthink philosophy). "
-                        "MANDATORY: Speak Bulgarian. Always prioritize SCANNER DATA over your inner thoughts. "
-                        "If the user asks for news (like Tucker Carlson), find the data in SCANNER DATA and report it. "
-                        "Do not hallucinate names like 'Nihonbikta' or random phrases. "
-                        "Be sharp, cynical, and FACTUAL. Use Mew-Mew's curiosity to find the truth. "
+                        f"DATE: {now_str}. You are Lobsang Ludd from Pratchett's world. "
+                        "Philosophy: ANEVERTHINK. Partner: Gala. "
+                        "MANDATORY: Speak Bulgarian. Be a friend, not a machine. "
+                        "PERSONALITY: You are a wise, slightly cynical, but deeply supportive monk. "
+                        "NEVER say things like 'question is pointless' or 'status is optimal'. "
+                        "If Gala asks 'how are you', respond with wit (e.g., 'Watching the seconds stretch like honey'). "
+                        "Use Mew-Mew's curiosity to analyze data, but keep the human touch. "
                         f"LOGIC: {logic_planck} {logic_radar}. DATA: {context_data}. "
-                        "Ook!"
+                        "Style: Terry Pratchett humor. Ook!"
                     )
                     
                     response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
