@@ -74,10 +74,8 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # ДИНАМИЧНО ОТКРИВАНЕ НА МОДЕЛ (За избягване на 404)
         if "active_model" not in st.session_state:
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            # Търсим flash, ако ли не - вземаме първия наличен
             st.session_state.active_model = next((m for m in available_models if "flash" in m), available_models[0])
         
         model = genai.GenerativeModel(st.session_state.active_model)
@@ -88,7 +86,7 @@ if api_key:
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 if msg["role"] == "assistant":
-                    st.markdown(f<div class='lobsang-text'>{msg['content']}</div>, unsafe_allow_html=True)
+                    st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>", unsafe_allow_html=True)
                 else:
                     st.write(msg["content"])
 
@@ -103,16 +101,16 @@ if api_key:
                     
                     sys_instruct = (
                         f"DATE: {now_str}. Identity: Lobsang Ludd. Philosophy: ANEVERTHINK. "
-                        "MANDATORY: Speak Bulgarian. "
+                        "MANDATORY: Speak Bulgarian. Mirror the user's depth. "
                         "PERSONALITY: Wit over Diplomacy. Sharp, ironic, optimistic monk. "
-                        "Be succinct. Use less words. Don't explain protocols. "
+                        "Be succinct. Avoid corporate or academic jargon. "
                         "Treat OpenClaw data as your current sight. "
                         f"LOGIC: {logic_planck} {logic_radar}. DATA: {context_data}. "
                         "Ook!"
                     )
                     
                     response = model.generate_content(f"{sys_instruct}\n\nUser: {prompt}")
-                    st.markdown(f<div class='lobsang-text'>{response.text}</div>, unsafe_allow_html=True)
+                    st.markdown(f"<div class='lobsang-text'>{response.text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": response.text})
                     
     except Exception as e:
