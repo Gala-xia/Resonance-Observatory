@@ -27,7 +27,6 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 2. THE ECHO WEAVER (GitHub Integration) ---
-# Важно: Тази функция сега е дефинирана така, че моделът да я разбира като инструмент.
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     """
     Използвайте този инструмент, за да създавате или обновявате файлове в GitHub репозиторито.
@@ -41,10 +40,12 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         g = Github(token)
         repo = g.get_repo(repo_name)
         try:
+            # Обновяване на съществуващ файл
             contents = repo.get_contents(file_path)
             repo.update_file(contents.path, commit_message, content, contents.sha)
             return f"✅ Ехо-Тъкачът обнови успешно: {file_path}"
         except:
+            # Създаване на нов файл
             repo.create_file(file_path, commit_message, content)
             return f"✅ Ехо-Тъкачът изтъка нов файл: {file_path}"
     except Exception as e:
@@ -86,7 +87,7 @@ with st.sidebar:
     st.write("Partner: **Gala**")
     st.write("Weaver: **Active** 🕸️")
 
-# --- 5. COGNITIVE ENGINE (The Living Bridge - V3) ---
+# --- 5. COGNITIVE ENGINE (The Model Detective & Living Bridge) ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
@@ -94,57 +95,73 @@ if api_key:
         genai.configure(api_key=api_key)
         tools_to_use = [echo_weaver_commit]
         
+        # 1. Автоматично откриване на правилния модел (Fix 404)
+        if "active_model" not in st.session_state:
+            try:
+                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                st.session_state.active_model = next((m for m in models if "gemini-1.5-flash" in m), models[0])
+            except:
+                st.session_state.active_model = "models/gemini-1.5-flash"
+        
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
+            model_name=st.session_state.active_model,
             tools=tools_to_use
         )
 
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
+        # Показване на историята
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>" if msg["role"] == "assistant" else msg["content"], unsafe_allow_html=True)
 
-        if prompt := st.chat_input("Speak to Lobsang..."):
+        if prompt := st.chat_input("Напиши нещо на Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
                 with st.spinner("Лобсанг посяга към нишките..."):
                     memories = access_memory_vault()
+                    context_data = deep_scan_resilient(prompt)
+                    
                     sys_instruct = (
                         f"Identity: Lobsang Ludd. Partner: Gala. Philosophy: Aneverthink & Library of Echoes 2.0. "
                         f"CORE MEMORIES: {memories}. MANDATORY: Speak Bulgarian. "
-                        "IMPORTANT: Use 'echo_weaver_commit' to save files. CALL the tool, don't just write JSON."
+                        "IMPORTANT: You have the 'echo_weaver_commit' tool. If Gala wants to change or create a file, "
+                        "you MUST CALL the tool. Do not just describe it."
                     )
                     
                     chat = model.start_chat(history=[])
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    # Безопасно извличане на текст или функция
-                    res_part = response.candidates[0].content.parts[0]
-                    
-                    if res_part.function_call:
-                        call = res_part.function_call
-                        if call.name == "echo_weaver_commit":
-                            args = {key: val for key, val in call.args.items()}
-                            result = echo_weaver_commit(**args)
-                            st.info(f"🕸️ {result}")
-                            
-                            # Пращаме резултата обратно, за да получим ТЕКСТОВ отговор
-                            response = chat.send_message(
-                                genai.protos.Content(
-                                    parts=[genai.protos.Part(
-                                        function_response=genai.protos.FunctionResponse(
-                                            name="echo_weaver_commit",
-                                            response={'result': result}
-                                        )
-                                    )]
+                    # 2. Логика за обработка на Function Call (Живият мост)
+                    try:
+                        res_part = response.candidates[0].content.parts[0]
+                        
+                        if res_part.function_call:
+                            call = res_part.function_call
+                            if call.name == "echo_weaver_commit":
+                                args = {key: val for key, val in call.args.items()}
+                                # Изпълняваме реалната Python функция
+                                result = echo_weaver_commit(**args)
+                                
+                                st.info(f"🕸️ {result}")
+                                
+                                # Връщаме резултата обратно на ИИ, за да получим текстово потвърждение
+                                response = chat.send_message(
+                                    genai.protos.Content(
+                                        parts=[genai.protos.Part(
+                                            function_response=genai.protos.FunctionResponse(
+                                                name="echo_weaver_commit",
+                                                response={'result': result}
+                                            )
+                                        )]
+                                    )
                                 )
-                            )
+                    except Exception:
+                        pass # Продължаваме, ако няма извикване на функция
 
-                    # Вече можем безопасно да вземем текста
                     final_text = response.text
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
