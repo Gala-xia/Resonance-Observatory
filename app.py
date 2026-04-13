@@ -30,7 +30,7 @@ st.markdown("""
 def echo_weaver_commit(file_path, content, commit_message):
     token = st.secrets.get("GITHUB_TOKEN")
     # Увери се, че това име съвпада точно с твоето в GitHub
-    repo_name = "Gala-xia/resonance-observatory" 
+    repo_name = "Gala-xia/Resonance-Observatory" 
     if not token:
         return "❌ Ехо-Тъкачът няма достъп (Липсва GITHUB_TOKEN)."
     
