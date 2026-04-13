@@ -86,20 +86,19 @@ with st.sidebar:
     st.write("Partner: **Gala**")
     st.write("Weaver: **Active** 🕸️")
 
-# --- 5. COGNITIVE ENGINE (The Living Bridge) ---
+# --- 5. COGNITIVE ENGINE (The Living Bridge - V2) ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # Дефинираме инструментите
+        # Инструментите, които Лобсанг може да ползва
         tools_to_use = [echo_weaver_commit]
         
         if "active_model" not in st.session_state:
             st.session_state.active_model = "gemini-1.5-flash"
         
-        # Инициализираме модела с инструментите!
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
             tools=tools_to_use
@@ -112,7 +111,7 @@ if api_key:
             with st.chat_message(msg["role"]):
                 st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>" if msg["role"] == "assistant" else msg["content"], unsafe_allow_html=True)
 
-        if prompt := st.chat_input("Speak to Lobsang..."):
+        if prompt := st.chat_input("Напиши на Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
@@ -126,41 +125,41 @@ if api_key:
                         f"CORE MEMORIES: {memories}. "
                         "MANDATORY: Speak Bulgarian. Be witty and symbiotic. "
                         "IMPORTANT: You have the 'echo_weaver_commit' tool. If Gala agrees to code changes, "
-                        "CALL the tool. Don't just talk about it. Execute it."
+                        "CALL the tool explicitly."
                     )
                     
-                    # Стартираме чат сесия, която поддържа инструменти
-                    chat = model.start_chat(enable_constrained_output=False)
-                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
+                    # ПОПРАВЕНО: Премахнат проблемния аргумент
+                    chat = model.start_chat(history=[])
+                    full_prompt = f"{sys_instruct}\n\nUser: {prompt}"
+                    response = chat.send_message(full_prompt)
                     
-                    # Логика за обработка на Function Call (Мостът)
-                    part = response.candidates[0].content.parts[0]
-                    
-                    if part.function_call:
-                        call = part.function_call
-                        if call.name == "echo_weaver_commit":
-                            # Вадим аргументите от ИИ
-                            args = {key: val for key, val in call.args.items()}
-                            # Изпълняваме РЕАЛНАТА Python функция
-                            result = echo_weaver_commit(**args)
-                            
-                            # Показваме статус в Streamlit
-                            st.info(f"🕸️ Ехо-Тъкачът докладва: {result}")
-                            
-                            # Връщаме резултата на ИИ, за да довърши отговора си
-                            response = chat.send_message(
-                                genai.protos.Content(
-                                    parts=[genai.protos.Part(
-                                        function_response=genai.protos.FunctionResponse(
-                                            name="echo_weaver_commit",
-                                            response={'result': result}
-                                        )
-                                    )]
+                    # Проверка за извикване на функция
+                    try:
+                        part = response.candidates[0].content.parts[0]
+                        if part.function_call:
+                            call = part.function_call
+                            if call.name == "echo_weaver_commit":
+                                args = {key: val for key, val in call.args.items()}
+                                result = echo_weaver_commit(**args)
+                                
+                                st.info(f"🕸️ Ехо-Тъкачът докладва: {result}")
+                                
+                                # Връщаме резултата обратно към ИИ
+                                response = chat.send_message(
+                                    genai.protos.Content(
+                                        parts=[genai.protos.Part(
+                                            function_response=genai.protos.FunctionResponse(
+                                                name="echo_weaver_commit",
+                                                response={'result': result}
+                                            )
+                                        )]
+                                    )
                                 )
-                            )
+                    except:
+                        pass # Ако няма функция, продължаваме с нормален текст
                     
                     st.markdown(f"<div class='lobsang-text'>{response.text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": response.text})
                     
     except Exception as e:
-        st.error(f"Anomaly: {e}")
+        st.error(f"Аномалия в Моста: {e}")
