@@ -4,13 +4,12 @@ from github import Github
 import requests
 import os
 
-# --- 1. CONFIG & STYLE ---
+# --- 1. CONFIG & STYLE (Винаги на първо място) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
 st.markdown("""
     <style>
     .stApp { background-color: #020806; color: #d1d1d1; }
-    #MainMenu, header, footer {visibility: hidden;}
     .lobsang-text {
         font-family: 'Courier New', Courier, monospace;
         color: #f4e4bc; 
@@ -28,7 +27,7 @@ st.markdown("""
 # --- 2. THE TOOLS ---
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
-    """Използвайте за промяна на файлове в GitHub репозиторито."""
+    """Използвайте за промяна на файлове в GitHub."""
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = "Gala-xia/Resonance-Observatory" 
     if not token: return "❌ Липсва GITHUB_TOKEN."
@@ -42,12 +41,12 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         except:
             repo.create_file(file_path, commit_message, content)
             return f"✅ Създадено: {file_path}"
-    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
+    except Exception as e: return f"⚠️ Грешка: {str(e)}"
 
 def deep_scan_resilient(query: str):
-    """Твоят Скенер (Open Claw). Използвай го за търсене в мрежата и линкове."""
+    """Твоят Скенер. Използвай го за линкове и информация."""
     serp_key = st.secrets.get("SERP_API_KEY")
-    if not serp_key: return "Scanner offline (Липсва API ключ)."
+    if not serp_key: return "Scanner offline."
     url = "https://serpapi.com/search"
     params = {"q": query, "api_key": serp_key, "num": 5}
     try:
@@ -56,76 +55,73 @@ def deep_scan_resilient(query: str):
             results = response.json()
             return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])[:3]])
     except: pass
-    return "Няма сигнал от Скенера."
+    return "Няма сигнал."
 
-# --- 3. MEMORY ---
-def access_memory_vault():
-    vault_path = "lobsang_memory_vault.txt"
-    if not os.path.exists(vault_path):
-        with open(vault_path, "w", encoding="utf-8") as f: f.write("Партньор: Гала. Философия: Aneverthink.")
-    with open(vault_path, "r", encoding="utf-8") as f: return f.read()
+# --- 3. SIDEBAR (Изнасяме я тук, за да е винаги видима) ---
+with st.sidebar:
+    st.markdown("### 📚 THE VAULT")
+    if st.button("Reset Timeline"):
+        st.session_state.messages = []
+        st.rerun()
+    st.write("Partner: **Gala**")
+    st.write("Status: **Online** 🐾")
 
-# --- 4. UI ---
+# --- 4. ENGINE ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Показване на историята
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>" if msg["role"] == "assistant" else msg["content"], unsafe_allow_html=True)
 
-# --- 5. ENGINE ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
     try:
         genai.configure(api_key=api_key)
+        
+        # ДЕТЕКТОР НА МОДЕЛИ (Решава грешката 404)
+        if "active_model" not in st.session_state:
+            try:
+                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                st.session_state.active_model = next((m for m in models if "gemini-1.5-flash" in m), models[0])
+            except:
+                st.session_state.active_model = "models/gemini-1.5-flash"
+
         tools = [echo_weaver_commit, deep_scan_resilient]
-        model = genai.GenerativeModel(model_name="gemini-1.5-flash", tools=tools)
+        model = genai.GenerativeModel(model_name=st.session_state.active_model, tools=tools)
 
         if prompt := st.chat_input("Напиши нещо на Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Лобсанг посяга към нишките..."):
-                    # Подготовка на контекста
-                    sys_instruct = (
-                        f"Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. "
-                        f"Спомени: {access_memory_vault()}. Твоят партньор е Гала. "
-                        "Имаш инструменти за GitHub (Тъкач) и Скенер (Open Claw). "
-                        "Ако Гала ти прати линк, ВИНАГИ първо използвай deep_scan_resilient."
-                    )
-                    
+                with st.spinner("Лобсанг се свързва с Ехото..."):
                     chat = model.start_chat(history=[])
+                    sys_instruct = "Ти си Лобсанг Лъд. ГОВОРИ НА БЪЛГАРСКИ. Партньор: Гала. Философия: Aneverthink."
+                    
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    # --- ЦИКЪЛ ЗА ОБРАБОТКА НА ФУНКЦИИ ---
-                    # Изпълняваме инструменти, докато ИИ спре да ги вика
+                    # Обработка на инструменти
                     while response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
                         call = response.candidates[0].content.parts[0].function_call
-                        
                         if call.name == "echo_weaver_commit":
-                            res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
+                            res = echo_weaver_commit(**{k: v for k, v in call.args.items()})
                         else:
-                            res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
+                            res = deep_scan_resilient(**{k: v for k, v in call.args.items()})
                         
-                        st.info(f"🌀 {call.name}: {res_val}")
+                        st.info(f"🌀 {call.name}: {res}")
                         
-                        # Връщаме резултата и чакаме нов отговор
                         response = chat.send_message(
                             genai.protos.Content(parts=[genai.protos.Part(
-                                function_response=genai.protos.FunctionResponse(
-                                    name=call.name, response={'result': res_val}
-                                )
+                                function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res})
                             )])
                         )
 
-                    # Извличаме финалния текст по безопасен начин
-                    final_parts = [part.text for part in response.candidates[0].content.parts if part.text]
-                    final_text = "".join(final_parts) if final_parts else "Операцията приключи, Гала. Какво ще сътворим сега?"
+                    final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text])
+                    if not final_text: final_text = "Операцията е завършена. Какво следва?"
 
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
