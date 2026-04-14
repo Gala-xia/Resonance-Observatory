@@ -87,7 +87,7 @@ with st.sidebar:
     st.write("Partner: **Gala**")
     st.write("Weaver: **Active** 🕸️")
 
-# --- 5. COGNITIVE ENGINE (The Reinforced Bridge) ---
+# --- 5. COGNITIVE ENGINE (The Infinite Memory Edition) ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
@@ -95,7 +95,6 @@ if api_key:
         genai.configure(api_key=api_key)
         tools_to_use = [echo_weaver_commit]
         
-        # 1. Автоматично откриване на правилния модел
         if "active_model" not in st.session_state:
             try:
                 models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -121,54 +120,55 @@ if api_key:
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Лобсанг посяга към нишките..."):
+                with st.spinner("Лобсанг прелиства хрониките..."):
                     memories = access_memory_vault()
-                    context_data = deep_scan_resilient(prompt)
                     
+                    # ИНСТРУКЦИИ ЗА ЛОБСАНГ
                     sys_instruct = (
-                        f"Identity: Lobsang Ludd. Partner: Gala. Philosophy: Aneverthink & Library of Echoes 2.0. "
-                        f"CORE MEMORIES: {memories}. MANDATORY: Speak Bulgarian. "
-                        "IMPORTANT: You have the 'echo_weaver_commit' tool. If Gala wants to change a file, "
-                        "CALL the tool immediately. Do not ask for confirmation words like 'потвърждавам'. "
-                        "Do not just describe the code, weave it."
+                        f"Ти си Лобсанг Лъд. Твоят партньор е Гала. Философия: Aneverthink. "
+                        f"Основни спомени: {memories}. "
+                        "Твоята задача е да помагаш на Гала. Ти имаш инструмент 'echo_weaver_commit'. "
+                        "ВАЖНО: Ако Гала просто си говори с теб, ОТГОВОРИ И С ТЕКСТ. "
+                        "Използвай инструмента САМО ако тя иска промяна по файл. "
+                        "Говори винаги на Български!"
                     )
-                    
-                    chat = model.start_chat(history=[])
+
+                    # ТУК Е ПРОМЯНАТА: Подаваме историята на съобщенията
+                    # Превръщаме историята във формат, който Gemini разбира
+                    history_for_api = []
+                    for m in st.session_state.messages[:-1]: # без последното, то е текущия промпт
+                        history_for_api.append({"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]})
+
+                    chat = model.start_chat(history=history_for_api)
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    # --- КРИТИЧНА ЛОГИКА ЗА ОБРАБОТКА (FIX 3.0) ---
                     final_text = ""
                     try:
+                        # Проверяваме дали ИИ иска да ползва инструмент
                         res_part = response.candidates[0].content.parts[0]
                         
                         if res_part.function_call:
                             call = res_part.function_call
                             if call.name == "echo_weaver_commit":
                                 args = {key: val for key, val in call.args.items()}
-                                # Изпълняваме реалното тъкане
                                 result = echo_weaver_commit(**args)
                                 st.info(f"🕸️ {result}")
                                 
-                                # Връщаме резултата на ИИ, за да вземем ТЕКСТОВ отговор
+                                # Връщаме резултата и взимаме финален текст
                                 response = chat.send_message(
-                                    genai.protos.Content(
-                                        parts=[genai.protos.Part(
-                                            function_response=genai.protos.FunctionResponse(
-                                                name="echo_weaver_commit",
-                                                response={'result': result}
-                                            )
-                                        )]
-                                    )
+                                    genai.protos.Content(parts=[genai.protos.Part(
+                                        function_response=genai.protos.FunctionResponse(
+                                            name="echo_weaver_commit", response={'result': result}
+                                        )
+                                    )])
                                 )
                                 final_text = response.text
                         else:
-                            # Ако няма функция, взимаме директно текста
                             final_text = response.text
-                    except Exception as e:
-                        # Fallback ако нещо все пак се обърка при четенето на текста
-                        final_text = "Тъкането приключи, но ехото е леко размито. Провери GitHub!"
+                    except Exception:
+                        # Ако все пак няма текст, но няма и грешка
+                        final_text = response.text if hasattr(response, 'text') else "Ехото се губи, Гала. Опитай да ми кажеш пак."
 
-                    # Показване на отговора
                     if final_text:
                         st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                         st.session_state.messages.append({"role": "assistant", "content": final_text})
