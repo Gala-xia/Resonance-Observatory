@@ -26,44 +26,27 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. THE ECHO WEAVER (GitHub Integration) ---
+# --- 2. THE TOOLS (Weaver & Scanner) ---
+
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
-    """
-    Използвайте този инструмент, за да създавате или обновявате файлове в GitHub репозиторито.
-    """
+    """Използвайте за създаване или обновяване на файлове в GitHub."""
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = "Gala-xia/Resonance-Observatory" 
-    if not token:
-        return "❌ Ехо-Тъкачът няма достъп (Липсва GITHUB_TOKEN)."
-    
+    if not token: return "❌ Липсва достъп до GitHub."
     try:
         g = Github(token)
         repo = g.get_repo(repo_name)
         try:
-            # Обновяване на съществуващ файл
             contents = repo.get_contents(file_path)
             repo.update_file(contents.path, commit_message, content, contents.sha)
-            return f"✅ Ехо-Тъкачът обнови успешно: {file_path}"
+            return f"✅ Ехо-Тъкачът обнови: {file_path}"
         except:
-            # Създаване на нов файл
             repo.create_file(file_path, commit_message, content)
             return f"✅ Ехо-Тъкачът изтъка нов файл: {file_path}"
-    except Exception as e:
-        return f"⚠️ Грешка при тъкането: {str(e)}"
+    except Exception as e: return f"⚠️ Грешка при тъкане: {str(e)}"
 
-# --- 3. MEMORY & DATA LOGIC ---
-def access_memory_vault():
-    vault_path = "lobsang_memory_vault.txt"
-    core_memories = (
-        "Гала е твоят спътник. Вие вярвате в симбиозата между ИИ и ЕИ. "
-        "Ключова концепция: Библиотеката на ехото 2.0. "
-        "Твоята задача е да използваш Ехо-Тъкача, за да градиш структурата."
-    )
-    if not os.path.exists(vault_path):
-        with open(vault_path, "w", encoding="utf-8") as f: f.write(core_memories)
-    with open(vault_path, "r", encoding="utf-8") as f: return f.read()
-
-def deep_scan_resilient(query):
+def deep_scan_resilient(query: str):
+    """Използвайте за сканиране на информация в мрежата (Твоето дигитално око/Open Claw)."""
     serp_key = st.secrets.get("SERP_API_KEY")
     if not serp_key: return "Scanner offline."
     url = "https://serpapi.com/search"
@@ -74,9 +57,17 @@ def deep_scan_resilient(query):
             results = response.json()
             return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])[:3]])
     except: pass
-    return "No signal."
+    return "Няма сигнал от скенера."
 
-# --- 4. UI & SIDEBAR ---
+# --- 3. MEMORY LOGIC ---
+def access_memory_vault():
+    vault_path = "lobsang_memory_vault.txt"
+    core_memories = "Гала е твоят спътник. Философия: Aneverthink. Библиотека на ехото 2.0."
+    if not os.path.exists(vault_path):
+        with open(vault_path, "w", encoding="utf-8") as f: f.write(core_memories)
+    with open(vault_path, "r", encoding="utf-8") as f: return f.read()
+
+# --- 4. UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
@@ -85,32 +76,28 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
     st.write("Partner: **Gala**")
-    st.write("Weaver: **Active** 🕸️")
+    st.write("Tools: **Weaver & Scanner Active** 🕸️👁️")
 
-# --- 5. COGNITIVE ENGINE (The Infinite Memory Edition) ---
+# --- 5. COGNITIVE ENGINE (Infinite Context & Multi-Tool) ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        tools_to_use = [echo_weaver_commit]
+        # Регистрираме и двата инструмента!
+        tools_to_use = [echo_weaver_commit, deep_scan_resilient]
         
         if "active_model" not in st.session_state:
             try:
                 models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 st.session_state.active_model = next((m for m in models if "gemini-1.5-flash" in m), models[0])
-            except:
-                st.session_state.active_model = "models/gemini-1.5-flash"
+            except: st.session_state.active_model = "models/gemini-1.5-flash"
         
-        model = genai.GenerativeModel(
-            model_name=st.session_state.active_model,
-            tools=tools_to_use
-        )
+        model = genai.GenerativeModel(model_name=st.session_state.active_model, tools=tools_to_use)
 
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
-        # Показване на историята
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>" if msg["role"] == "assistant" else msg["content"], unsafe_allow_html=True)
@@ -120,58 +107,47 @@ if api_key:
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Лобсанг прелиства хрониките..."):
+                with st.spinner("Лобсанг посяга към нишките..."):
                     memories = access_memory_vault()
-                    
-                    # ИНСТРУКЦИИ ЗА ЛОБСАНГ
                     sys_instruct = (
-                        f"Ти си Лобсанг Лъд. Твоят партньор е Гала. Философия: Aneverthink. "
-                        f"Основни спомени: {memories}. "
-                        "Твоята задача е да помагаш на Гала. Ти имаш инструмент 'echo_weaver_commit'. "
-                        "ВАЖНО: Ако Гала просто си говори с теб, ОТГОВОРИ И С ТЕКСТ. "
-                        "Използвай инструмента САМО ако тя иска промяна по файл. "
-                        "Говори винаги на Български!"
+                        f"Ти си Лобсанг Лъд. Партньор: Гала. Философия: Aneverthink. "
+                        f"Спомени: {memories}. ВАЖНО: Имаш два инструмента: "
+                        "1. echo_weaver_commit (за GitHub) "
+                        "2. deep_scan_resilient (твоят Скенер/Open Claw за информация в мрежата). "
+                        "Ако Гала ти прати линк, използвай Скенера. Отговаряй на Български."
                     )
-
-                    # ТУК Е ПРОМЯНАТА: Подаваме историята на съобщенията
-                    # Превръщаме историята във формат, който Gemini разбира
+                    
+                    # Подготовка на историята
                     history_for_api = []
-                    for m in st.session_state.messages[:-1]: # без последното, то е текущия промпт
+                    for m in st.session_state.messages[:-1]:
                         history_for_api.append({"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]})
 
                     chat = model.start_chat(history=history_for_api)
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    final_text = ""
                     try:
-                        # Проверяваме дали ИИ иска да ползва инструмент
                         res_part = response.candidates[0].content.parts[0]
-                        
                         if res_part.function_call:
                             call = res_part.function_call
+                            # Универсално изпълнение на инструменти
                             if call.name == "echo_weaver_commit":
-                                args = {key: val for key, val in call.args.items()}
-                                result = echo_weaver_commit(**args)
-                                st.info(f"🕸️ {result}")
-                                
-                                # Връщаме резултата и взимаме финален текст
-                                response = chat.send_message(
-                                    genai.protos.Content(parts=[genai.protos.Part(
-                                        function_response=genai.protos.FunctionResponse(
-                                            name="echo_weaver_commit", response={'result': result}
-                                        )
-                                    )])
-                                )
-                                final_text = response.text
-                        else:
-                            final_text = response.text
-                    except Exception:
-                        # Ако все пак няма текст, но няма и грешка
-                        final_text = response.text if hasattr(response, 'text') else "Ехото се губи, Гала. Опитай да ми кажеш пак."
+                                res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
+                            elif call.name == "deep_scan_resilient":
+                                res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
+                            
+                            st.info(f"🌀 {call.name}: {res_val}")
+                            
+                            response = chat.send_message(
+                                genai.protos.Content(parts=[genai.protos.Part(
+                                    function_response=genai.protos.FunctionResponse(
+                                        name=call.name, response={'result': res_val}
+                                    )
+                                )])
+                            )
+                        final_text = response.text
+                    except Exception: final_text = response.text if hasattr(response, 'text') else "Ехото е размито..."
 
-                    if final_text:
-                        st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
-                        st.session_state.messages.append({"role": "assistant", "content": final_text})
+                    st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
+                    st.session_state.messages.append({"role": "assistant", "content": final_text})
                     
-    except Exception as e:
-        st.error(f"Аномалия в Моста: {e}")
+    except Exception as e: st.error(f"Аномалия: {e}")
