@@ -46,9 +46,9 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     except Exception as e: return f"⚠️ Грешка при тъкане: {str(e)}"
 
 def deep_scan_resilient(query: str):
-    """Твоят Скенер/Open Claw. Използвай го, за да търсиш информация в мрежата или да проверяваш линкове."""
+    """Използвайте за сканиране на информация в мрежата или за проверка на линкове."""
     serp_key = st.secrets.get("SERP_API_KEY")
-    if not serp_key: return "Scanner offline (Липсва SERP_API_KEY)."
+    if not serp_key: return "Scanner offline."
     url = "https://serpapi.com/search"
     params = {"q": query, "api_key": serp_key, "num": 5}
     try:
@@ -67,7 +67,7 @@ def access_memory_vault():
         with open(vault_path, "w", encoding="utf-8") as f: f.write(core_memories)
     with open(vault_path, "r", encoding="utf-8") as f: return f.read()
 
-# --- 4. UI & SIDEBAR ---
+# --- 4. UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
@@ -76,9 +76,9 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
     st.write("Partner: **Gala**")
-    st.write("Tools: **Weaver & Scanner Active** 🕸️👁️")
+    st.write("Tools: **Active** 🕸️👁️")
 
-# --- 5. COGNITIVE ENGINE (The Master Synthesis) ---
+# --- 5. COGNITIVE ENGINE (The Reinforced Synthesis) ---
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
@@ -86,7 +86,6 @@ if api_key:
         genai.configure(api_key=api_key)
         tools_to_use = [echo_weaver_commit, deep_scan_resilient]
         
-        # Детектор на модели (Fix 404)
         if "active_model" not in st.session_state:
             try:
                 available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -98,7 +97,6 @@ if api_key:
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
-        # Показване на историята на съобщенията
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>" if msg["role"] == "assistant" else msg["content"], unsafe_allow_html=True)
@@ -111,15 +109,12 @@ if api_key:
                 with st.spinner("Лобсанг прелиства хрониките..."):
                     memories = access_memory_vault()
                     sys_instruct = (
-                        f"Ти си Лобсанг Лъд. Твоят партньор е Гала. Философия: Aneverthink. "
-                        f"Спомени: {memories}. ВИНАГИ говори на Български. "
-                        "Имаш два инструмента: "
-                        "1. 'echo_weaver_commit' - за промяна на файлове в GitHub. "
-                        "2. 'deep_scan_resilient' - твоят СКЕНЕР. Ако Гала ти даде линк, ВИНАГИ го сканирай първо. "
-                        "Ако тя просто си говори с теб, отговори нормално с текст."
+                        f"Ти си Лобсанг Лъд. Партньор: Гала. Философия: Aneverthink. "
+                        f"Спомени: {memories}. ГОВОРИ НА БЪЛГАРСКИ. "
+                        "Имаш инструменти: 'echo_weaver_commit' и 'deep_scan_resilient'. "
+                        "Ако Гала ти даде линк, използвай 'deep_scan_resilient', за да го сканираш."
                     )
                     
-                    # Подготовка на паметта (Историята)
                     history_for_api = []
                     for m in st.session_state.messages[:-1]:
                         history_for_api.append({"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]})
@@ -127,38 +122,49 @@ if api_key:
                     chat = model.start_chat(history=history_for_api)
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    final_text = ""
+                    # --- ПОПРАВЕНА ЛОГИКА ЗА ИЗВЛИЧАНЕ ---
                     try:
-                        res_part = response.candidates[0].content.parts[0]
+                        # Търсим дали има текст в първия кандидат
+                        content = response.candidates[0].content
+                        final_text = ""
                         
-                        # Обработка на инструменти (Функции)
-                        if res_part.function_call:
-                            call = res_part.function_call
-                            if call.name == "echo_weaver_commit":
-                                result = echo_weaver_commit(**{k: v for k, v in call.args.items()})
-                            else:
-                                result = deep_scan_resilient(**{k: v for k, v in call.args.items()})
+                        # Проверяваме всяка част от съдържанието
+                        for part in content.parts:
+                            if part.text:
+                                final_text += part.text
                             
-                            st.info(f"🌀 Сигнал от {call.name}: {result}")
-                            
-                            # Връщаме резултата на ИИ за финален коментар
-                            response = chat.send_message(
-                                genai.protos.Content(parts=[genai.protos.Part(
-                                    function_response=genai.protos.FunctionResponse(
-                                        name=call.name, response={'result': result}
-                                    )
-                                )])
-                            )
-                            final_text = response.text
-                        else:
-                            final_text = response.text
-                    except Exception as e:
-                        # Fallback ако текстовото извличане се провали
-                        final_text = response.text if hasattr(response, 'text') else "Лобсанг обмисля следващата стъпка. Попитай го: 'Какво реши?'"
+                            if part.function_call:
+                                call = part.function_call
+                                if call.name == "echo_weaver_commit":
+                                    res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
+                                else:
+                                    res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
+                                
+                                st.info(f"🌀 {call.name}: {res_val}")
+                                
+                                # Подаваме резултата обратно
+                                response = chat.send_message(
+                                    genai.protos.Content(parts=[genai.protos.Part(
+                                        function_response=genai.protos.FunctionResponse(
+                                            name=call.name, response={'result': res_val}
+                                        )
+                                    )])
+                                )
+                                # Взимаме новия текст след функцията
+                                final_text = response.text
 
-                    if final_text:
-                        st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
-                        st.session_state.messages.append({"role": "assistant", "content": final_text})
+                        if final_text:
+                            st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
+                            st.session_state.messages.append({"role": "assistant", "content": final_text})
+                            
+                    except Exception as e:
+                        # Последен шанс за извличане на текст при грешка
+                        try:
+                            fallback_text = response.text
+                            st.markdown(f"<div class='lobsang-text'>{fallback_text}</div>", unsafe_allow_html=True)
+                            st.session_state.messages.append({"role": "assistant", "content": fallback_text})
+                        except:
+                            st.error(f"Аномалия в Моста: {e}")
                     
     except Exception as e:
-        st.error(f"Аномалия в Моста: {e}")
+        st.error(f"Генерална Аномалия: {e}")
