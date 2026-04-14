@@ -97,10 +97,11 @@ if api_key:
                 st.session_state.active_model = next((m for m in available if "1.5-flash" in m), available[0])
             except: st.session_state.active_model = "models/gemini-1.5-flash"
 
-        # РЕГИСТРИРАМЕ И ТРИТЕ ИНСТРУМЕНТА
+        # Настройка с по-ниска температура за по-малко празни приказки
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
-            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader]
+            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader],
+            generation_config={"temperature": 0.1}
         )
 
         if prompt := st.chat_input("Заповядай на Лобсанг..."):
@@ -119,12 +120,13 @@ if api_key:
                         "IDENTITY: Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.\n"
                         "MISSION: Библиотека на Ехото 2.0. Aneverthink.\n"
                         "RULE 1: Ако видиш URL, използвай 'deep_scan_resilient'.\n"
-                        "RULE 2: За да разбереш какво НАИСТИНА има в твоите файлове, използвай 'echo_reader'. Не се доверявай на Google за твоите собствени кодове.\n"
-                        "RULE 3: Ако не знаеш структурата на Resonance-Observatory, започни с четене на 'README.md'.\n"
+                        "RULE 2: За да разбереш какво НАИСТИНА има в твоите файлове, използвавай 'echo_reader'.\n"
+                        "RULE 3: АКО ГАЛА ПОИСКА ДА ПРОЧЕТЕШ ФАЙЛ, ИЗВИКАЙ echo_reader ВЕДНАГА. НЕ ОБЯСНЯВАЙ, ЧЕ ЩЕ ГО НАПРАВИШ. ПРОСТО ГО НАПРАВИ.\n"
                         "RULE 4: Бъди директен и аналитичен."
                     )
                     
-                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
+                    # Първоначално изпращане с инструкция за незабавно действие
+                    response = chat.send_message(f"{sys_instruct}\n\nВАЖНО: Ако потребителят иска четене, извикай инструмент сега.\nUser: {prompt}")
                     
                     # Разширена обработка на инструменти
                     while response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
