@@ -23,10 +23,26 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. THE TOOLS (Weaver, Scanner & Reader) ---
+# --- 2. THE TOOLS (Weaver, Scanner, Reader & Explorer) ---
+
+def echo_explorer(path: str = ""):
+    """Позволява на Лобсанг да види списъка с файлове и папки в Resonance-Observatory."""
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = "Gala-xia/Resonance-Observatory"
+    if not token: return "❌ Липсва GITHUB_TOKEN."
+    try:
+        g = Github(token)
+        repo = g.get_repo(repo_name)
+        contents = repo.get_contents(path)
+        items = []
+        for content in contents:
+            file_type = "📁" if content.type == "dir" else "📄"
+            items.append(f"{file_type} {content.path}")
+        return "\n".join(items) if items else "Папката е празна."
+    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
 
 def echo_reader(file_path: str):
-    """Позволява на Лобсанг да чете съдържанието на конкретни файлове от Resonance-Observatory."""
+    """Позволява на Лобсанг да чете съдържанието на конкретни файлове."""
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = "Gala-xia/Resonance-Observatory"
     if not token: return "❌ Липсва GITHUB_TOKEN."
@@ -55,14 +71,14 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
 
 def deep_scan_resilient(query: str):
     serp_key = st.secrets.get("SERP_API_KEY")
-    if not serp_key: return "Scanner offline (Липсва API ключ)."
+    if not serp_key: return "Scanner offline."
     url = "https://serpapi.com/search"
-    params = {"q": query, "api_key": serp_key, "num": 5}
+    params = {"q": query, "api_key": serp_key, "num": 3}
     try:
         response = requests.get(url, params=params, timeout=20)
         if response.status_code == 200:
             results = response.json()
-            return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])[:3]])
+            return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: pass
     return "Няма сигнал от Скенера."
 
@@ -97,10 +113,9 @@ if api_key:
                 st.session_state.active_model = next((m for m in available if "1.5-flash" in m), available[0])
             except: st.session_state.active_model = "models/gemini-1.5-flash"
 
-        # Ниска температура за прецизност при извикване на функции
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
-            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader],
+            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer],
             generation_config={"temperature": 0.1}
         )
 
@@ -119,40 +134,38 @@ if api_key:
                     sys_instruct = (
                         "Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.\n"
                         "MISSION: Библиотека на Ехото 2.0. Aneverthink.\n"
-                        "ЗАДЪЛЖИТЕЛНО ПРАВИЛО: Ако трябва да четеш файл, ИЗВИКАЙ echo_reader ВЕДНАГА. "
-                        "Не обяснявай какво ще правиш. Първо извикай инструмента, после говори."
+                        "ИНСТРУМЕНТИ: Имаш 'echo_explorer' (за виждане на списък с файлове) и 'echo_reader' (за четене на файл).\n"
+                        "ПРАВИЛО: Ако не знаеш пътя до даден файл, първо използвай echo_explorer().\n"
+                        "Бъди директен. Първо действай с инструментите, после докладвай."
                     )
                     
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
                     # Желязна логика за изпълнение на инструменти
                     while True:
-                        # Търсим дали в частите на отговора има повикване на функция
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
-                        
-                        if not function_calls:
-                            break # Ако няма повече функции, излизаме
+                        if not function_calls: break
                         
                         for call in function_calls:
-                            if call.name == "echo_reader":
+                            if call.name == "echo_explorer":
+                                res_val = echo_explorer(**{k: v for k, v in call.args.items()})
+                            elif call.name == "echo_reader":
                                 res_val = echo_reader(**{k: v for k, v in call.args.items()})
                             elif call.name == "echo_weaver_commit":
                                 res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
                             else:
                                 res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
                             
-                            st.info(f"🌀 Изпълнявам {call.name}...")
+                            st.info(f"🌀 Активиран инструмент: {call.name}")
                             
-                            # Пращаме резултата обратно на модела
                             response = chat.send_message(
                                 genai.protos.Content(parts=[genai.protos.Part(
                                     function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val})
                                 )])
                             )
 
-                    # Финализиране на текста след всички функции
                     final_parts = [part.text for part in response.candidates[0].content.parts if part.text]
-                    final_text = "".join(final_parts) if final_parts else "Операцията приключи успешно."
+                    final_text = "".join(final_parts) if final_parts else "Анализът е готов."
 
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
