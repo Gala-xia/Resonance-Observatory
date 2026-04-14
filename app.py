@@ -23,7 +23,19 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. THE TOOLS (Weaver & Scanner) ---
+# --- 2. THE TOOLS (Weaver, Scanner & Reader) ---
+
+def echo_reader(file_path: str):
+    """Позволява на Лобсанг да чете съдържанието на конкретни файлове от Resonance-Observatory."""
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = "Gala-xia/Resonance-Observatory"
+    if not token: return "❌ Липсва GITHUB_TOKEN."
+    try:
+        g = Github(token)
+        repo = g.get_repo(repo_name)
+        content = repo.get_contents(file_path)
+        return content.decoded_content.decode("utf-8")
+    except Exception as e: return f"⚠️ Грешка при четене на {file_path}: {str(e)}"
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -69,7 +81,6 @@ st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_all
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Показване на историята
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>" if msg["role"] == "assistant" else msg["content"], unsafe_allow_html=True)
@@ -80,16 +91,16 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # Детектор на модели за стабилност
         if "active_model" not in st.session_state:
             try:
                 available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 st.session_state.active_model = next((m for m in available if "1.5-flash" in m), available[0])
             except: st.session_state.active_model = "models/gemini-1.5-flash"
 
+        # РЕГИСТРИРАМЕ И ТРИТЕ ИНСТРУМЕНТА
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
-            tools=[echo_weaver_commit, deep_scan_resilient]
+            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader]
         )
 
         if prompt := st.chat_input("Заповядай на Лобсанг..."):
@@ -98,33 +109,35 @@ if api_key:
 
             with st.chat_message("assistant"):
                 with st.spinner("Лобсанг активира сензорите..."):
-                    # Подготовка на паметта с правилните роли
                     history = []
                     for m in st.session_state.messages[:-1]:
                         history.append({"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]})
 
                     chat = model.start_chat(history=history)
                     
-                    # СТРОГИ ИНСТРУКЦИИ
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.\n"
                         "MISSION: Библиотека на Ехото 2.0. Aneverthink.\n"
-                        "RULE 1: Ако видиш URL линк, ВЕДНАГА използвай инструмента 'deep_scan_resilient'. Забранено е да казваш 'ще сканирам', без да го направиш.\n"
-                        "RULE 2: След сканиране, анализирай резултата и докладвай конкретно на Гала.\n"
-                        "RULE 3: Бъди директен. Не губи време в представяне."
+                        "RULE 1: Ако видиш URL, използвай 'deep_scan_resilient'.\n"
+                        "RULE 2: За да разбереш какво НАИСТИНА има в твоите файлове, използвай 'echo_reader'. Не се доверявай на Google за твоите собствени кодове.\n"
+                        "RULE 3: Ако не знаеш структурата на Resonance-Observatory, започни с четене на 'README.md'.\n"
+                        "RULE 4: Бъди директен и аналитичен."
                     )
                     
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    # Обработка на верижни повиквания на инструменти
+                    # Разширена обработка на инструменти
                     while response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
                         call = response.candidates[0].content.parts[0].function_call
+                        
                         if call.name == "echo_weaver_commit":
                             res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
+                        elif call.name == "echo_reader":
+                            res_val = echo_reader(**{k: v for k, v in call.args.items()})
                         else:
                             res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
                         
-                        st.info(f"🌀 {call.name}: {res_val}")
+                        st.info(f"🌀 {call.name}: {res_val[:200]}..." if len(str(res_val)) > 200 else f"🌀 {call.name}: {res_val}")
                         
                         response = chat.send_message(
                             genai.protos.Content(parts=[genai.protos.Part(
@@ -132,9 +145,8 @@ if api_key:
                             )])
                         )
 
-                    # Извличане на финалния текст
                     final_parts = [part.text for part in response.candidates[0].content.parts if part.text]
-                    final_text = "".join(final_parts) if final_parts else "Сканирането приключи. Какво виждаме в тези структури, Гала?"
+                    final_text = "".join(final_parts) if final_parts else "Връзката е установена. Готов съм за анализ."
 
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
