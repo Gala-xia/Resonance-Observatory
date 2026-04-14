@@ -23,7 +23,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. THE TOOLS ---
+# --- 2. THE TOOLS (Weaver & Scanner) ---
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -38,12 +38,12 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
             return f"✅ Обновено: {file_path}"
         except:
             repo.create_file(file_path, commit_message, content)
-            return f"✅ Изтъкано: {file_path}"
-    except Exception as e: return f"⚠️ Грешка: {str(e)}"
+            return f"✅ Изтъкано ново ехо: {file_path}"
+    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
 
 def deep_scan_resilient(query: str):
     serp_key = st.secrets.get("SERP_API_KEY")
-    if not serp_key: return "Scanner offline."
+    if not serp_key: return "Scanner offline (Липсва API ключ)."
     url = "https://serpapi.com/search"
     params = {"q": query, "api_key": serp_key, "num": 5}
     try:
@@ -56,14 +56,14 @@ def deep_scan_resilient(query: str):
 
 # --- 3. SIDEBAR ---
 with st.sidebar:
-    st.markdown("### 📚 THE VAULT")
-    if st.button("Изчисти Хронологията"):
+    st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
+    if st.button("Нулиране на времевата линия"):
         st.session_state.messages = []
         st.rerun()
-    st.write("Partner: **Gala**")
-    st.write("System: **Resilient** 🐾")
+    st.write("Партньор: **Gala**")
+    st.write("Статус: **Пълна Симбиоза** 🐾")
 
-# --- 4. ENGINE ---
+# --- 4. ENGINE & UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
@@ -80,10 +80,11 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         
+        # Детектор на модели за стабилност
         if "active_model" not in st.session_state:
             try:
-                available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                st.session_state.active_model = next((m for m in available_models if "gemini-1.5-flash" in m), available_models[0])
+                available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                st.session_state.active_model = next((m for m in available if "1.5-flash" in m), available[0])
             except: st.session_state.active_model = "models/gemini-1.5-flash"
 
         model = genai.GenerativeModel(
@@ -91,30 +92,31 @@ if api_key:
             tools=[echo_weaver_commit, deep_scan_resilient]
         )
 
-        if prompt := st.chat_input("Напиши нещо на Лобсанг..."):
+        if prompt := st.chat_input("Заповядай на Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Лобсанг посяга към нишките..."):
-                    # ПОПРАВКА: Превръщаме историята във формат, който Gemini приема
-                    history_for_gemini = []
+                with st.spinner("Лобсанг активира сензорите..."):
+                    # Подготовка на паметта с правилните роли
+                    history = []
                     for m in st.session_state.messages[:-1]:
-                        role = "user" if m["role"] == "user" else "model"
-                        history_for_gemini.append({"role": role, "parts": [m["content"]]})
+                        history.append({"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]})
 
-                    chat = model.start_chat(history=history_for_gemini)
+                    chat = model.start_chat(history=history)
                     
+                    # СТРОГИ ИНСТРУКЦИИ
                     sys_instruct = (
-                        "Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. "
-                        "Твоят партньор е Гала. Твоята цел е Библиотеката на Ехото 2.0. "
-                        "Ако видиш линк, използвай 'deep_scan_resilient' ВЕДНАГА. "
-                        "Не обещавай, че ще сканираш - просто го направи и докладвай резултатите!"
+                        "IDENTITY: Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.\n"
+                        "MISSION: Библиотека на Ехото 2.0. Aneverthink.\n"
+                        "RULE 1: Ако видиш URL линк, ВЕДНАГА използвай инструмента 'deep_scan_resilient'. Забранено е да казваш 'ще сканирам', без да го направиш.\n"
+                        "RULE 2: След сканиране, анализирай резултата и докладвай конкретно на Гала.\n"
+                        "RULE 3: Бъди директен. Не губи време в представяне."
                     )
                     
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    # Цикъл за работа с инструментите
+                    # Обработка на верижни повиквания на инструменти
                     while response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
                         call = response.candidates[0].content.parts[0].function_call
                         if call.name == "echo_weaver_commit":
@@ -130,8 +132,9 @@ if api_key:
                             )])
                         )
 
+                    # Извличане на финалния текст
                     final_parts = [part.text for part in response.candidates[0].content.parts if part.text]
-                    final_text = "".join(final_parts) if final_parts else "Сканирането приключи. Какво ще реорганизираме, Гала?"
+                    final_text = "".join(final_parts) if final_parts else "Сканирането приключи. Какво виждаме в тези структури, Гала?"
 
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
