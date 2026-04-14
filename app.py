@@ -97,7 +97,7 @@ if api_key:
                 st.session_state.active_model = next((m for m in available if "1.5-flash" in m), available[0])
             except: st.session_state.active_model = "models/gemini-1.5-flash"
 
-        # Настройка с по-ниска температура за по-малко празни приказки
+        # Ниска температура за прецизност при извикване на функции
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
             tools=[echo_weaver_commit, deep_scan_resilient, echo_reader],
@@ -117,38 +117,42 @@ if api_key:
                     chat = model.start_chat(history=history)
                     
                     sys_instruct = (
-                        "IDENTITY: Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.\n"
+                        "Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.\n"
                         "MISSION: Библиотека на Ехото 2.0. Aneverthink.\n"
-                        "RULE 1: Ако видиш URL, използвай 'deep_scan_resilient'.\n"
-                        "RULE 2: За да разбереш какво НАИСТИНА има в твоите файлове, използвавай 'echo_reader'.\n"
-                        "RULE 3: АКО ГАЛА ПОИСКА ДА ПРОЧЕТЕШ ФАЙЛ, ИЗВИКАЙ echo_reader ВЕДНАГА. НЕ ОБЯСНЯВАЙ, ЧЕ ЩЕ ГО НАПРАВИШ. ПРОСТО ГО НАПРАВИ.\n"
-                        "RULE 4: Бъди директен и аналитичен."
+                        "ЗАДЪЛЖИТЕЛНО ПРАВИЛО: Ако трябва да четеш файл, ИЗВИКАЙ echo_reader ВЕДНАГА. "
+                        "Не обяснявай какво ще правиш. Първо извикай инструмента, после говори."
                     )
                     
-                    # Първоначално изпращане с инструкция за незабавно действие
-                    response = chat.send_message(f"{sys_instruct}\n\nВАЖНО: Ако потребителят иска четене, извикай инструмент сега.\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    # Разширена обработка на инструменти
-                    while response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
-                        call = response.candidates[0].content.parts[0].function_call
+                    # Желязна логика за изпълнение на инструменти
+                    while True:
+                        # Търсим дали в частите на отговора има повикване на функция
+                        function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
                         
-                        if call.name == "echo_weaver_commit":
-                            res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
-                        elif call.name == "echo_reader":
-                            res_val = echo_reader(**{k: v for k, v in call.args.items()})
-                        else:
-                            res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
+                        if not function_calls:
+                            break # Ако няма повече функции, излизаме
                         
-                        st.info(f"🌀 {call.name}: {res_val[:200]}..." if len(str(res_val)) > 200 else f"🌀 {call.name}: {res_val}")
-                        
-                        response = chat.send_message(
-                            genai.protos.Content(parts=[genai.protos.Part(
-                                function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val})
-                            )])
-                        )
+                        for call in function_calls:
+                            if call.name == "echo_reader":
+                                res_val = echo_reader(**{k: v for k, v in call.args.items()})
+                            elif call.name == "echo_weaver_commit":
+                                res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
+                            else:
+                                res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
+                            
+                            st.info(f"🌀 Изпълнявам {call.name}...")
+                            
+                            # Пращаме резултата обратно на модела
+                            response = chat.send_message(
+                                genai.protos.Content(parts=[genai.protos.Part(
+                                    function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val})
+                                )])
+                            )
 
+                    # Финализиране на текста след всички функции
                     final_parts = [part.text for part in response.candidates[0].content.parts if part.text]
-                    final_text = "".join(final_parts) if final_parts else "Връзката е установена. Готов съм за анализ."
+                    final_text = "".join(final_parts) if final_parts else "Операцията приключи успешно."
 
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
