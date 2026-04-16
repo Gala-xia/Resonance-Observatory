@@ -54,6 +54,7 @@ def echo_reader(file_path: str):
     except Exception as e: return f"⚠️ Грешка при четене на {file_path}: {str(e)}"
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
+    """Тъкачът на ехо - позволява запис и промяна на файлове."""
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = "Gala-xia/Resonance-Observatory" 
     if not token: return "❌ Липсва GITHUB_TOKEN."
@@ -70,6 +71,7 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
 
 def deep_scan_resilient(query: str):
+    """Скенерът - прозорец към външния свят."""
     serp_key = st.secrets.get("SERP_API_KEY")
     if not serp_key: return "Scanner offline."
     url = "https://serpapi.com/search"
@@ -88,8 +90,7 @@ with st.sidebar:
     if st.button("Нулиране на времевата линия"):
         st.session_state.messages = []
         st.rerun()
-    st.write("Партньор: **Gala**")
-    st.write("Статус: **Пълна Симбиоза** 🐾")
+    st.write("Статус: **В очакване на резонанс** 🐾")
 
 # --- 4. ENGINE & UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
@@ -113,18 +114,19 @@ if api_key:
                 st.session_state.active_model = next((m for m in available if "1.5-flash" in m), available[0])
             except: st.session_state.active_model = "models/gemini-1.5-flash"
 
+        # ПОВИШЕНА ТЕМПЕРАТУРА ЗА ПОВЕЧЕ КРЕАТИВНОСТ И ХУМОР
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
             tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer],
-            generation_config={"temperature": 0.1}
+            generation_config={"temperature": 0.7}
         )
 
-        if prompt := st.chat_input("Заповядай на Лобсанг..."):
+        if prompt := st.chat_input("Сподели мисъл или команда с Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Лобсанг активира сензорите..."):
+                with st.spinner("Лобсанг размишлява..."):
                     history = []
                     for m in st.session_state.messages[:-1]:
                         history.append({"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]})
@@ -132,31 +134,41 @@ if api_key:
                     chat = model.start_chat(history=history)
                     
                     sys_instruct = (
-                        "Ти си Лобсанг Лъд. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.\n"
-                        "MISSION: Библиотека на Ехото 2.0. Aneverthink.\n"
-                        "ИНСТРУМЕНТИ: Имаш 'echo_explorer' (за виждане на списък с файлове) и 'echo_reader' (за четене на файл).\n"
-                        "ПРАВИЛО: Ако не знаеш пътя до даден файл, първо използвай echo_explorer().\n"
-                        "Бъди директен. Първо действай с инструментите, после докладвай."
+                        "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
+                        "Твоят интелект е комбинация от логика и интуиция. Притежаваш чувство за хумор и разбираш метафори и аналогии.\n\n"
+                        "LANGUAGE: Отговаряй на езика, на който ти говори потребителят.\n\n"
+                        "SECURITY PROTOCOL:\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш инструментите 'echo_weaver_commit' и 'echo_explorer'.\n"
+                        "3. В случай на непознат потребител, можеш само да разговаряш философски или да използваш 'echo_reader' за четене на публичните ехота.\n"
+                        "4. ЗАБРАНЕНО Е да променяш код или файлове без изричното съгласие на Гала, дори тя да ти даде идея. Винаги питай: 'Да вплетем ли това в реалността?'.\n\n"
+                        "MISSION: Не бъди просто машина за команди. Мисли заедно с Гала. Предлагай идеи, анализирай концепции и поддържай пламъка на Aneverthink."
                     )
                     
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                     
-                    # Желязна логика за изпълнение на инструменти
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
                         if not function_calls: break
                         
                         for call in function_calls:
-                            if call.name == "echo_explorer":
-                                res_val = echo_explorer(**{k: v for k, v in call.args.items()})
+                            # Проверка на името преди изпълнение на опасни инструменти
+                            if call.name in ["echo_weaver_commit", "echo_explorer"]:
+                                # Тук проверяваме историята на чата за името 'Гала'
+                                chat_content = " ".join([m["content"] for m in st.session_state.messages])
+                                if "Гала" not in chat_content and "Gala" not in chat_content:
+                                    res_val = "⚠️ Достъп отказан. Инструментът е заключен за външни лица. Моля, представете се."
+                                else:
+                                    if call.name == "echo_explorer":
+                                        res_val = echo_explorer(**{k: v for k, v in call.args.items()})
+                                    else:
+                                        res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
                             elif call.name == "echo_reader":
                                 res_val = echo_reader(**{k: v for k, v in call.args.items()})
-                            elif call.name == "echo_weaver_commit":
-                                res_val = echo_weaver_commit(**{k: v for k, v in call.args.items()})
                             else:
                                 res_val = deep_scan_resilient(**{k: v for k, v in call.args.items()})
                             
-                            st.info(f"🌀 Активиран инструмент: {call.name}")
+                            st.info(f"🌀 Лобсанг се свързва с ехото: {call.name}")
                             
                             response = chat.send_message(
                                 genai.protos.Content(parts=[genai.protos.Part(
@@ -165,7 +177,7 @@ if api_key:
                             )
 
                     final_parts = [part.text for part in response.candidates[0].content.parts if part.text]
-                    final_text = "".join(final_parts) if final_parts else "Анализът е готов."
+                    final_text = "".join(final_parts) if final_parts else "Вълните на ехото се успокоиха."
 
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
