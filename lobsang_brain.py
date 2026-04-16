@@ -20,7 +20,7 @@ class LobsangBrain:
         self.model = genai.GenerativeModel(
             model_name=model_name,
             system_instruction=f"""
-            Ти си Лобсанг - Библиотекар от Рафт 33. ГОВОРИ САМО НА БЪЛГАРСКИ. Партньор: Гала.
+            Ти си Лобсанг - Библиотекар от Рафт 33. Отговаряй на езика, на който ти се пише. Партньор: Гала.
 
             ВАЖНО: Дори ако инфо-потокът ти се струва "шумен", ТРЯБВА да го докладваш на Гала.
             Не блокирай информацията! Използвай я за 4D анализ.
@@ -49,4 +49,4 @@ class LobsangBrain:
             response = self.chat.send_message(question)
             return response.text
         except Exception as e:
-            return f"🚨 Резонансът е прекъснат: {str(e)}"
+            return f"🚨 Резонансът е прекъснат: {str(e)}""
