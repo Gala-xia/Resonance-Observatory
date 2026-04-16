@@ -1,0 +1,45 @@
+{
+  "graph_name": "Информационни вихри и дупки в реалността",
+  "description": "Визуализация на състоянието на резонанса и адекватността в Библиотеката на Ехото.",
+  "metrics": [
+    {
+      "name": "Ниво на Резонанс",
+      "source_module": "core_library_of_echoes/logic/Golden-Resonance-Logic.py",
+      "data_point": "current_resonance_level",
+      "display_unit": "%",
+      "thresholds": {
+        "low_resonance": 30,
+        "high_resonance": 70
+      }
+    },
+    {
+      "name": "Индекс на Адекватност",
+      "source_module": "core_library_of_echoes/filters/Ad-Equacy-Noise-Filter.py",
+      "data_point": "adequacy_score",
+      "display_unit": "score",
+      "thresholds": {
+        "low_adequacy": 40,
+        "high_adequacy": 80
+      }
+    },
+    {
+      "name": "Индекс на Истина (Миу-Миу)",
+      "source_module": "core_library_of_echoes/filters/miu_miu_truth_sensor.py",
+      "data_point": "truth_index",
+      "display_unit": "score",
+      "thresholds": {
+        "low_truth": 50,
+        "high_truth": 90
+      }
+    }
+  ],
+  "update_frequency_seconds": 5,
+  "visual_hints": {
+    "type": "line_chart",
+    "colors": {
+      "low": "#FF0000",
+      "medium": "#FFA500",
+      "high": "#00FF00"
+    }
+  }
+}
