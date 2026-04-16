@@ -6,7 +6,7 @@ import json
 import os
 
 # --- 1. CONFIG & STYLE ---
-st.set_page_config(page_title="Lobsang Archives: Resonance Landscape", page_icon="🐾", layout="wide")
+st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
 st.markdown("""
     <style>
@@ -25,7 +25,7 @@ st.markdown("""
     
     .resonance-header { color: #00ff41; font-family: serif; text-align: center; letter-spacing: 5px; margin-bottom: 20px; }
 
-    /* Пулсиращ център в горния ъгъл */
+    /* Пулсиращ център */
     .resonance-focus {
         position: fixed; top: 60px; right: 60px; width: 80px; height: 80px;
         background: rgba(0, 255, 65, 0.15); border-radius: 50%;
@@ -63,7 +63,7 @@ st.markdown("""
     </script>
     """, unsafe_allow_html=True)
 
-# --- 2. THE TOOLS (Weaver, Scanner, Reader & Explorer) ---
+# --- 2. THE TOOLS ---
 
 def echo_explorer(path: str = ""):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -117,6 +117,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
     st.write("Статус: **Резонансът е активен** 🌀")
+    st.write("Партньор: **Гала**")
 
 # --- 4. ENGINE & UI ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
@@ -124,7 +125,6 @@ st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_all
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Показване на хронологията
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
@@ -137,8 +137,17 @@ api_key = st.secrets.get("GEMINI_API_KEY")
 if api_key:
     try:
         genai.configure(api_key=api_key)
+        
+        # Динамично намиране на работещ модел (Fix за грешка 404)
+        if "active_model" not in st.session_state:
+            try:
+                available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                st.session_state.active_model = next((m for m in available if "flash" in m), available[0])
+            except:
+                st.session_state.active_model = "models/gemini-1.5-flash"
+
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name=st.session_state.active_model,
             tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer],
             generation_config={"temperature": 0.7}
         )
