@@ -1,0 +1,28 @@
+{
+  "name": "Миу-Миу",
+  "description": "Интерактивна котка, която се разхожда по екрана.",
+  "states": [
+    {
+      "name": "разходка",
+      "animation_frames": ["miu_miu_walk_1.png", "miu_miu_walk_2.png"],
+      "speed": "средна",
+      "duration_min": 5,
+      "duration_max": 15
+    },
+    {
+      "name": "почивка",
+      "animation_frames": ["miu_miu_idle.png"],
+      "duration_min": 10,
+      "duration_max": 30
+    },
+    {
+      "name": "спане",
+      "animation_frames": ["miu_miu_sleep.png"],
+      "duration_min": 20,
+      "duration_max": 60
+    }
+  ],
+  "image_assets_path": "/assets/miu_miu/",
+  "initial_position": "random",
+  "interaction_events": ["клик", "hover"]
+}
