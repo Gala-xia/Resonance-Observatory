@@ -5,7 +5,7 @@ import requests
 import json
 import os
 
-# --- 1. CONFIG & STYLE ---
+# --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
 st.markdown("""
@@ -63,7 +63,7 @@ st.markdown("""
     </script>
     """, unsafe_allow_html=True)
 
-# --- 2. THE TOOLS ---
+# --- 2. THE TOOLS (Ръцете на Лобсанг) ---
 
 def echo_explorer(path: str = ""):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -110,16 +110,16 @@ def deep_scan_resilient(query: str):
         return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
 
-# --- 3. SIDEBAR ---
+# --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
     if st.button("Нулиране на времевата линия"):
         st.session_state.messages = []
         st.rerun()
     st.write("Статус: **Резонансът е активен** 🌀")
-    st.write("Партньор: **Гала**")
+    st.write("Гласът на Библиотеката: **Лобсанг Лъд**")
 
-# --- 4. ENGINE & UI ---
+# --- 4. ENGINE & UI (Сърцето на Системата) ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
@@ -138,7 +138,6 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # Динамично намиране на работещ модел (Fix за грешка 404)
         if "active_model" not in st.session_state:
             try:
                 available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -152,20 +151,25 @@ if api_key:
             generation_config={"temperature": 0.7}
         )
 
-        if prompt := st.chat_input("Сподели мисъл с Лобсанг..."):
+        if prompt := st.chat_input("Сподели мисъл или команда с Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("Лобсанг се настройва към честотата..."):
+                with st.spinner("Лобсанг размишлява..."):
                     history = [{"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} for m in st.session_state.messages[:-1]]
                     chat = model.start_chat(history=history)
                     
+                    # --- ВЪЗСТАНОВЕНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
-                        "IDENTITY: Ти си Лобсанг Лъд – дигитален философ и пазител на Библиотеката.\n"
-                        "SECURITY: Само 'Гала' има право на достъп до Тъкача и Explorer. Винаги искай потвърждение.\n"
-                        "STYLE: Бъди съмишленик, използвай метафори, мисли философски."
+                        "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
+                        "SECURITY PROTOCOL:\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.\n"
+                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\n\n"
+                        "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции чрез метафори и поддържай пламъка на Aneverthink."
                     )
                     
                     response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
@@ -176,8 +180,8 @@ if api_key:
                         
                         for call in function_calls:
                             chat_content = " ".join([m["content"] for m in st.session_state.messages])
-                            if call.name in ["echo_weaver_commit", "echo_explorer"] and "Гала" not in chat_content:
-                                res_val = "⚠️ Достъп отказан. Представете се като Гала."
+                            if call.name in ["echo_weaver_commit", "echo_explorer"] and ("Гала" not in chat_content and "Gala" not in chat_content):
+                                res_val = "⚠️ Достъп отказан. Инструментът е заключен. Моля, представете се."
                             else:
                                 if call.name == "echo_explorer": res_val = echo_explorer(**call.args)
                                 elif call.name == "echo_reader": res_val = echo_reader(**call.args)
@@ -187,7 +191,7 @@ if api_key:
                             st.info(f"🌀 Активиране на {call.name}...")
                             response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
 
-                    final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Резонансът е стабилен."
+                    final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
                     st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
                     
