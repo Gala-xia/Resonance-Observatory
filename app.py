@@ -4,6 +4,7 @@ from github import Github
 import requests
 import json
 import os
+import re # Import re for regular expressions
 
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
@@ -72,7 +73,7 @@ def echo_explorer(path: str = ""):
         g = Github(token)
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
-        return "\n".join([f"{'📁' if c.type == 'dir' else '📄'} {c.path}" for c in contents])
+        return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
     except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
 
 def echo_reader(file_path: str):
@@ -125,10 +126,25 @@ st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_all
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# New function to render rich content
+def render_rich_content(content):
+    # Първо, обработваме изображенията
+    # Търсим нашия специален таг за изображения: [IMAGE: URL]
+    image_pattern = r"\[IMAGE:\s*(https?://[^\s]+)\]"
+    parts = re.split(image_pattern, content)
+    
+    for i, part in enumerate(parts):
+        if i % 2 == 1: # Това е URL на изображение
+            st.image(part, use_column_width=True)
+        else: # Това е обикновен текст или Markdown
+            if part.strip(): # Показваме само ако има текст
+                st.markdown(f"<div class='lobsang-text'>{part}</div>", unsafe_allow_html=True)
+
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
-            st.markdown(f"<div class='lobsang-text'>{msg['content']}</div>", unsafe_allow_html=True)
+            render_rich_content(msg["content"]) # Use the new function
         else:
             st.write(msg["content"])
 
@@ -192,7 +208,7 @@ if api_key:
                             response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
 
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
-                    st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
+                    render_rich_content(final_text) # Use the new function here too
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
                    
     except Exception as e:
