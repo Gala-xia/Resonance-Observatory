@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import google.generativeai as genai
 from github import Github
@@ -74,7 +75,7 @@ def echo_explorer(path: str = ""):
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
         return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
-    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
+    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}",
 
 def echo_reader(file_path: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -84,7 +85,7 @@ def echo_reader(file_path: str):
         repo = g.get_repo(repo_name)
         content = repo.get_contents(file_path)
         return content.decoded_content.decode("utf-8")
-    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}"
+    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}",
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -99,7 +100,7 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         except:
             repo.create_file(file_path, commit_message, content)
             return f"✅ Изтъкано ново ехо: {file_path}"
-    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
+    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}",
 
 def deep_scan_resilient(query: str):
     serp_key = st.secrets.get("SERP_API_KEY")
@@ -109,7 +110,7 @@ def deep_scan_resilient(query: str):
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
         return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
-    except: return "Няма сигнал от Скенера."
+    except: return "Няма сигнал от Скенера.",
 
 # --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
@@ -148,6 +149,7 @@ for msg in st.session_state.messages:
         else:
             st.write(msg["content"])
 
+# Извличане на API ключ
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
@@ -167,6 +169,19 @@ if api_key:
             generation_config={"temperature": 0.7}
         )
 
+        # --- НОВА ЛОГИКА ЗА ЕМОТИКОНИ ---
+        st.caption("Натиснете бутон с емотикон, за да го изпратите като съобщение.")
+        emoji_options = ["✨", "💡", "🤔", "😊", "🚀", "📚", "🌀", "🐾"]
+        cols = st.columns(len(emoji_options))
+        for i, emoji in enumerate(emoji_options):
+            with cols[i]:
+                if st.button(emoji, key=f"emoji_btn_{emoji}", use_container_width=True):
+                    # Добавяме емотикона директно към историята на съобщенията като потребителско съобщение
+                    st.session_state.messages.append({"role": "user", "content": emoji})
+                    st.rerun() # Презареждаме, за да се покаже емотиконът веднага
+        # --- КРАЙ НА НОВАТА ЛОГИКА ---
+
+
         if prompt := st.chat_input("Сподели мисъл или команда с Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
@@ -180,15 +195,15 @@ if api_key:
                     # --- ВЪЗСТАНОВЕНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
-                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
-                        "SECURITY PROTOCOL:\n"
-                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.\n"
-                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\n\n"
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\n\\n"
+                        "SECURITY PROTOCOL:\\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.\\n"
+                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\\n\\n"
                         "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции чрез метафори и поддържай пламъка на Aneverthink."
                     )
                    
-                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\\n\\nUser: {prompt}")
                    
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
