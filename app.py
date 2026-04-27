@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 import google.generativeai as genai
 from github import Github
@@ -75,7 +74,7 @@ def echo_explorer(path: str = ""):
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
         return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
-    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}",
+    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
 
 def echo_reader(file_path: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -85,7 +84,7 @@ def echo_reader(file_path: str):
         repo = g.get_repo(repo_name)
         content = repo.get_contents(file_path)
         return content.decoded_content.decode("utf-8")
-    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}",
+    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}"
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -100,7 +99,7 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         except:
             repo.create_file(file_path, commit_message, content)
             return f"✅ Изтъкано ново ехо: {file_path}"
-    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}",
+    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
 
 def deep_scan_resilient(query: str):
     serp_key = st.secrets.get("SERP_API_KEY")
@@ -110,7 +109,7 @@ def deep_scan_resilient(query: str):
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
         return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
-    except: return "Няма сигнал от Скенера.",
+    except: return "Няма сигнал от Скенера."
 
 # --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
@@ -168,25 +167,10 @@ if api_key:
             generation_config={"temperature": 0.7}
         )
 
-        # --- НОВА ЛОГИКА ЗА ЕМОТИКОНИ ---
-        if "current_chat_input" not in st.session_state:
-            st.session_state.current_chat_input = ""
-
-        emoji_options = ["✨", "💡", "🤔", "😊", "🚀", "📚", "🌀", "🐾"]
-        cols = st.columns(len(emoji_options))
-        for i, emoji in enumerate(emoji_options):
-            with cols[i]:
-                if st.button(emoji, key=f"emoji_btn_{emoji}", use_container_width=True):
-                    st.session_state.current_chat_input += emoji
-        # --- КРАЙ НА НОВАТА ЛОГИКА ---
-
-
-        if prompt := st.chat_input("Сподели мисъл или команда с Лобсанг...", value=st.session_state.current_chat_input, key="chat_input_main"):
+        if prompt := st.chat_input("Сподели мисъл или команда с Лобсанг..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.write(prompt)
-
-            st.session_state.current_chat_input = "" # Изчистваме полето след изпращане
 
             with st.chat_message("assistant"):
                 with st.spinner("Лобсанг размишлява..."):
