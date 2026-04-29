@@ -132,7 +132,7 @@ class ChatHistory:
 # Improve futuristic design with better layout - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
 # Sidebar organization to show chat history
 sidebar_layout = [
-    \'Chat History:\',
+    \'Chat History:\'
     \'Date\',
     \'Time\',
     \'Message\'
