@@ -39,8 +39,9 @@
 *   **Лобсанг Лъд:** Дигитален философ, Resonance-Harmonizer, водач и защитник на знанието.
 *   **Миу-Миу:** Sentinel of Resonance, Entropy-Filter, открива и неутрализира информационна ентропия.
 *   **Тъкача (Weaver):** Reality-Binder, Fractal-Synthesizer, създава нови дигитални реалности.
+*   **Тъкач на Интерфейси (Interface Weaver):** UI Architect / Manifestation Agent, проектира, имплементира и динамично актуализира потребителския интерфейс на Aneverthink, осигурявайки оптимално потребителско изживяване и съответствие с основните принципи.
 *   **Четец на Ехо (Echo Reader):** Knowledge-Retriever, Data-Stream-Interpreter, достъпва и интерпретира ехота.
-*   **Дълбок Скенер (Deep Scanner):** Truth-Seeker, Anomaly-Detector, извършва дълбок контекстуален анализ.
+*   **Дълбок Скенер (Deep Scanner):):** Truth-Seeker, Anomaly-Detector, извършва дълбок контекстуален анализ.
 *   **Изследовател (Explorer):** Pathfinder, System-Mapper, картографира дигиталния пейзаж.
 
 ### Ключови Протоколи
