@@ -111,6 +111,41 @@ def deep_scan_resilient(query: str):
         return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
 
+# --- New features from Copilot's ui-redesign branch ---
+
+# Initialize emoji selector
+emoji_selector = ['😊', '😢', '😡', '😮', '😴', '😉']
+
+# Chat history system (Conceptual placeholder, needs implementation for persistence)
+class ChatHistory:
+    def __init__(self):
+        self.history = self.load_history()
+
+    def load_history(self):
+        # Load chat history from localStorage or JSON.
+        # For Streamlit, this would typically involve st.session_state or external storage.
+        return []
+
+    def save_history(self):
+        # Save chat history to localStorage or JSON.
+        # For Streamlit, this would typically involve st.session_state or external storage.
+        pass
+
+# Sidebar organization to show chat history (Conceptual layout)
+sidebar_layout = [
+    'Chat History:',
+    'Date',
+    'Time',
+    'Message'
+]
+
+# Function to add emoji buttons in chat input area (Interaction with st.chat_input needs advanced handling)
+def insert_emoji(emoji):
+    # Logic to insert emoji into chat input.
+    # Direct insertion into st.chat_input from a button is complex in Streamlit
+    # and often requires custom components or JavaScript.
+    pass
+
 # --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
@@ -119,6 +154,11 @@ with st.sidebar:
         st.rerun()
     st.write("Статус: **Резонансът е активен** 🌀")
     st.write("Гласът на Библиотеката: **Лобсанг Лъд**")
+    
+    # Display sidebar layout from new features
+    st.markdown("---")
+    for item in sidebar_layout:
+        st.write(item)
 
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
@@ -171,6 +211,17 @@ if api_key:
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.write(prompt)
+
+            # Display emoji buttons
+            col_emojis = st.columns(len(emoji_selector))
+            for i, emoji in enumerate(emoji_selector):
+                with col_emojis[i]:
+                    if st.button(emoji, key=f"emoji_btn_{emoji}"):
+                        # This part needs more advanced Streamlit/JS interaction
+                        # to actually insert the emoji into the chat input field.
+                        # For now, it will just register the click.
+                        st.session_state.current_chat_input = st.session_state.get("current_chat_input", "") + emoji
+                        st.rerun() # Rerun to potentially update chat input if we find a way
 
             with st.chat_message("assistant"):
                 with st.spinner("Лобсанг размишлява..."):
