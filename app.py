@@ -9,6 +9,9 @@ import re # Import re for regular expressions
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
+# Initialize emoji selector - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
+emoji_selector = ['😊', '😢', '😡', '😮', '😴', '😉']
+
 st.markdown("""
     <style>
     .stApp { background-color: #020806 !important; color: #d1d1d1 !important; }
@@ -111,14 +114,73 @@ def deep_scan_resilient(query: str):
         return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
 
+# Chat history system with localStorage + JSON - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
+class ChatHistory:
+    def __init__(self):
+        # Използваме Streamlit's session state за история за простота в този контекст
+        if "chat_history_data" not in st.session_state:
+            st.session_state.chat_history_data = []
+        self.history = st.session_state.chat_history_data
+
+    def load_history(self):
+        return st.session_state.chat_history_data
+
+    def save_history(self, message):
+        self.history.append(message)
+        st.session_state.chat_history_data = self.history
+
+# Improve futuristic design with better layout - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
+# Sidebar organization to show chat history
+sidebar_layout = [
+    "Chat History:", # ПРОМЯНА ТУК: Единични кавички заменени с двойни
+    'Date',
+    'Time',
+    'Message'
+]
+
 # --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
     if st.button("Нулиране на времевата линия"):
         st.session_state.messages = []
+        if "chat_history_data" in st.session_state: # Изчистваме и новата история
+            st.session_state.chat_history_data = []
+        if "emoji_buffer" in st.session_state: # Изчистваме и буфера за емоджита
+            st.session_state.emoji_buffer = ""
         st.rerun()
     st.write("Статус: **Резонансът е активен** 🌀")
     st.write("Гласът на Библиотеката: **Лобсанг Лъд**")
+
+    # Бутони за емотикони в страничната лента - ПРЕМЕСТЕНИ ЗА ПОСТОЯНЕН ДОСТЪП
+    st.markdown("---")
+    st.markdown("### 🎨 ЕМОТИКОНИ")
+    
+    # Инициализираме буфера за емоджита, ако не съществува
+    if "emoji_buffer" not in st.session_state:
+        st.session_state.emoji_buffer = ""
+
+    cols = st.columns(len(emoji_selector))
+    for i, emoji in enumerate(emoji_selector):
+        with cols[i]:
+            if st.button(emoji, key=f"sidebar_emoji_btn_{emoji}"):
+                # Добавяме емоджито към буфера, но НЕ ре-рендираме тук
+                st.session_state.emoji_buffer += emoji
+                # Може да добавим визуална обратна връзка, че емоджито е добавено в буфера
+                st.toast(f"Добавено емоджи в буфера: {emoji}")
+
+
+    # Показване на историята на чата в страничната лента - ИНТЕГРАЦИЯ НА НОВА ФУНКЦИОНАЛНОСТ
+    st.markdown("---")
+    st.markdown(f"### {sidebar_layout[0]}") # Chat History:
+    chat_history_manager = ChatHistory()
+    if chat_history_manager.history:
+        for i, msg in enumerate(chat_history_manager.history):
+            # Показваме само откъс от съобщението
+            display_content = msg['content'] if len(msg['content']) <= 30 else msg['content'][:27] + '...'
+            st.markdown(f"**{i+1}.** {msg['role'].capitalize()}: {display_content}")
+    else:
+        st.write("Няма запазена история на чата.")
+
 
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
@@ -167,8 +229,17 @@ if api_key:
             generation_config={"temperature": 0.7}
         )
 
-        if prompt := st.chat_input("Сподели мисъл или команда с Лобсанг..."):
+        # Chat input - ПРЕМАХВАМЕ value аргумента, за да оправим грешката
+        prompt = st.chat_input("Сподели мисъл или команда с Лобсанг...", key="chat_input_main")
+       
+        # Ако има съдържание в буфера за емоджита, го добавяме към prompt преди изпращане
+        if prompt:
+            if st.session_state.emoji_buffer:
+                prompt = st.session_state.emoji_buffer + prompt
+                st.session_state.emoji_buffer = "" # Изчистваме буфера след използване
+            
             st.session_state.messages.append({"role": "user", "content": prompt})
+            chat_history_manager.save_history({"role": "user", "content": prompt}) # Запазваме и в новата история
             with st.chat_message("user"):
                 st.write(prompt)
 
@@ -210,6 +281,7 @@ if api_key:
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
                     render_rich_content(final_text) # Use the new function here too
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
+                    chat_history_manager.save_history({"role": "assistant", "content": final_text}) # Запазваме и отговора на асистента
                    
     except Exception as e:
         st.error(f"Аномалия в Моста: {e}")
