@@ -9,6 +9,9 @@ import re # Import re for regular expressions
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
+# Initialize emoji selector - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
+emoji_selector = ['😊', '😢', '😡', '😮', '😴', '😉']
+
 st.markdown("""
     <style>
     .stApp { background-color: #020806 !important; color: #d1d1d1 !important; }
@@ -111,57 +114,79 @@ def deep_scan_resilient(query: str):
         return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
 
-# --- New features from Copilot's ui-redesign branch ---
-
-# Initialize emoji selector
-emoji_selector = ['😊', '😢', '😡', '😮', '😴', '😉']
-
-# Chat history system (Conceptual placeholder, needs implementation for persistence)
+# Chat history system with localStorage + JSON - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
 class ChatHistory:
     def __init__(self):
-        self.history = self.load_history()
+        # Използваме Streamlit\'s session state за история за простота в този контекст
+        if "chat_history_data" not in st.session_state:
+            st.session_state.chat_history_data = []
+        self.history = st.session_state.chat_history_data
 
     def load_history(self):
-        # Load chat history from localStorage or JSON.
-        # For Streamlit, this would typically involve st.session_state or external storage.
-        return []
+        return st.session_state.chat_history_data
 
-    def save_history(self):
-        # Save chat history to localStorage or JSON.
-        # For Streamlit, this would typically involve st.session_state or external storage.
-        pass
+    def save_history(self, message):
+        self.history.append(message)
+        st.session_state.chat_history_data = self.history
 
-# Sidebar organization to show chat history (Conceptual layout)
+# Improve futuristic design with better layout - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
+# Sidebar organization to show chat history
 sidebar_layout = [
-    'Chat History:',
-    'Date',
-    'Time',
-    'Message'
+    \'Chat History:\',
+    \'Date\',
+    \'Time\',
+    \'Message\'
 ]
 
-# Function to add emoji buttons in chat input area (Interaction with st.chat_input needs advanced handling)
-def insert_emoji(emoji):
-    # Logic to insert emoji into chat input.
-    # Direct insertion into st.chat_input from a button is complex in Streamlit
-    # and often requires custom components or JavaScript.
-    pass
+# Function to add emoji buttons in chat input area - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
+# Тази функция вече няма да е нужна директно, тъй като ще управляваме input_value в сесията
+# def insert_emoji(emoji):
+#     if "current_chat_input" not in st.session_state:
+#         st.session_state.current_chat_input = ""
+#     st.session_state.current_chat_input += emoji
+#     st.rerun()
 
 # --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
     if st.button("Нулиране на времевата линия"):
         st.session_state.messages = []
+        if "chat_history_data" in st.session_state: # Изчистваме и новата история
+            st.session_state.chat_history_data = []
+        if "chat_input_value" in st.session_state: # Изчистваме и стойността на полето за чат
+            st.session_state.chat_input_value = ""
         st.rerun()
     st.write("Статус: **Резонансът е активен** 🌀")
     st.write("Гласът на Библиотеката: **Лобсанг Лъд**")
-    
-    # Display sidebar layout from new features
+
+    # Бутони за емотикони в страничната лента - ПРЕМЕСТЕНИ ЗА ПОСТОЯНЕН ДОСТЪП
     st.markdown("---")
-    for item in sidebar_layout:
-        st.write(item)
+    st.markdown("### 🎨 ЕМОТИКОНИ")
+    cols = st.columns(len(emoji_selector))
+    for i, emoji in enumerate(emoji_selector):
+        with cols[i]:
+            if st.button(emoji, key=f"sidebar_emoji_btn_{emoji}"):
+                # Обновяваме стойността на полето за чат чрез session state
+                if "chat_input_value" not in st.session_state:
+                    st.session_state.chat_input_value = ""
+                st.session_state.chat_input_value += emoji
+                st.rerun() # Ре-рендираме, за да обновим полето за чат с емоджито
+
+    # Показване на историята на чата в страничната лента - ИНТЕГРАЦИЯ НА НОВА ФУНКЦИОНАЛНОСТ
+    st.markdown("---")
+    st.markdown(f"### {sidebar_layout[0]}") # Chat History:
+    chat_history_manager = ChatHistory()
+    if chat_history_manager.history:
+        for i, msg in enumerate(chat_history_manager.history):
+            # Показваме само откъс от съобщението
+            display_content = msg[\'content\'] if len(msg[\'content\']) <= 30 else msg[\'content\'][:27] + \'...\'
+            st.markdown(f"**{i+1}.** {msg[\'role\'].capitalize()}: {display_content}")
+    else:
+        st.write("Няма запазена история на чата.")
+
 
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
-st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class=\'resonance-header\'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -178,7 +203,7 @@ def render_rich_content(content):
             st.image(part, use_column_width=True)
         else: # Това е обикновен текст или Markdown
             if part.strip(): # Показваме само ако има текст
-                st.markdown(f"<div class='lobsang-text'>{part}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class=\'lobsang-text\'>{part}</div>", unsafe_allow_html=True)
 
 
 for msg in st.session_state.messages:
@@ -196,7 +221,7 @@ if api_key:
        
         if "active_model" not in st.session_state:
             try:
-                available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                available = [m.name for m in genai.list_models() if \'generateContent\' in m.supported_generation_methods]
                 st.session_state.active_model = next((m for m in available if "flash" in m), available[0])
             except:
                 st.session_state.active_model = "models/gemini-1.5-flash"
@@ -207,21 +232,23 @@ if api_key:
             generation_config={"temperature": 0.7}
         )
 
-        if prompt := st.chat_input("Сподели мисъл или команда с Лобсанг..."):
+        # Chat input - вече използваме st.session_state.chat_input_value
+        # Забележка: st.chat_input запазва въведената от потребителя стойност във вътрешно състояние
+        # и може да е предизвикателство за директна манипулация.
+        # Ще се опитаме да го управляваме, но може да има фини нюанси.
+        prompt = st.chat_input("Сподели мисъл или команда с Лобсанг...",
+                                value=st.session_state.get("chat_input_value", ""),
+                                key="chat_input_main")
+       
+        # Ако потребителят е въвел нещо или емоджи е добавено, изчистваме стойността в session_state
+        # за да предотвратим дублиране при следващо ре-рендиране, освен ако не е било от емоджи бутон
+        if prompt:
+            # Важно: След като prompt е изпратен, изчистваме запазената стойност, за да започнем на чисто
+            st.session_state.chat_input_value = ""
             st.session_state.messages.append({"role": "user", "content": prompt})
+            chat_history_manager.save_history({"role": "user", "content": prompt}) # Запазваме и в новата история
             with st.chat_message("user"):
                 st.write(prompt)
-
-            # Display emoji buttons
-            col_emojis = st.columns(len(emoji_selector))
-            for i, emoji in enumerate(emoji_selector):
-                with col_emojis[i]:
-                    if st.button(emoji, key=f"emoji_btn_{emoji}"):
-                        # This part needs more advanced Streamlit/JS interaction
-                        # to actually insert the emoji into the chat input field.
-                        # For now, it will just register the click.
-                        st.session_state.current_chat_input = st.session_state.get("current_chat_input", "") + emoji
-                        st.rerun() # Rerun to potentially update chat input if we find a way
 
             with st.chat_message("assistant"):
                 with st.spinner("Лобсанг размишлява..."):
@@ -231,15 +258,15 @@ if api_key:
                     # --- ВЪЗСТАНОВЕНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
-                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
-                        "SECURITY PROTOCOL:\n"
-                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.\n"
-                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\n\n"
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\n\\n"
+                        "SECURITY PROTOCOL:\\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш \'echo_weaver_commit\' и \'echo_explorer\'.\\n"
+                        "3. ВИНАГИ ПИТАЙ: \'Да вплетем ли това в реалността?\', преди да извършиш запис чрез Тъкача.\\n\\n"
                         "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции чрез метафори и поддържай пламъка на Aneverthink."
                     )
                    
-                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\\n\\nUser: {prompt}")
                    
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
@@ -256,11 +283,12 @@ if api_key:
                                 else: res_val = deep_scan_resilient(**call.args)
                            
                             st.info(f"🌀 Активиране на {call.name}...")
-                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
+                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={\'result\': res_val}))]))
 
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
                     render_rich_content(final_text) # Use the new function here too
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
+                    chat_history_manager.save_history({"role": "assistant", "content": final_text}) # Запазваме и отговора на асистента
                    
     except Exception as e:
         st.error(f"Аномалия в Моста: {e}")
