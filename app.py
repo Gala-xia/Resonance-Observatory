@@ -47,8 +47,8 @@ st.markdown("""
     #miu-miu-container {
         position: fixed; bottom: 90px; right: 30px; width: 60px; height: 60px;
         z-index: 1000; display: flex; align-items: center; justify-content: center;
-        font-size: 45px; filter: drop-shadow(0 0 10px #00ff41);
-        pointer-events: none;
+        font-size: 45px; filter: drop_shadow(0 0 10px #00ff41);
+        pointer_events: none;
     }
     </style>
    
@@ -76,7 +76,8 @@ def echo_explorer(path: str = ""):
         g = Github(token)
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
-        return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
+        return "
+".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
     except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
 
 def echo_reader(file_path: str):
@@ -111,8 +112,44 @@ def deep_scan_resilient(query: str):
     try:
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
-        return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
+        return "
+".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
+
+def get_latest_news(query: str):
+    news_api_key = st.secrets.get("NEWS_API_KEY")
+    if not news_api_key:
+        return "News API ключът не е наличен."
+    
+    url = "https://newsapi.org/v2/everything"
+    params = {
+        "q": query,
+        "apiKey": news_api_key,
+        "language": "en", # Може да се промени на 'bg', ако News API поддържа добре български
+        "sortBy": "relevancy",
+        "pageSize": 3 # Ограничаваме до 3 статии за краткост
+    }
+    try:
+        response = requests.get(url, params=params, timeout=20)
+        response.raise_for_status() # Повдига изключение за HTTP грешки
+        results = response.json()
+        articles = results.get("articles", [])
+        if not articles:
+            return "Не бяха открити новини по зададената тема."
+        
+        news_snippets = []
+        for article in articles:
+            title = article.get("title", "Без заглавие")
+            description = article.get("description", "Без описание")
+            url = article.get("url", "#")
+            news_snippets.append(f"📰 {title}: {description} [Прочети повече]({url})")
+        
+        return "
+".join(news_snippets)
+    except requests.exceptions.RequestException as e:
+        return f"Грешка при свързване с News API: {e}"
+    except Exception as e:
+        return f"Възникна неочаквана грешка: {e}"
 
 # Chat history system with localStorage + JSON - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
 class ChatHistory:
@@ -154,7 +191,7 @@ with st.sidebar:
     # Бутони за емотикони в страничната лента - ПРЕМЕСТЕНИ ЗА ПОСТОЯНЕН ДОСТЪП
     st.markdown("---")
     st.markdown("### 🎨 ЕМОТИКОНИ")
-   
+    
     # Инициализираме буфера за емоджита, ако не съществува
     if "emoji_buffer" not in st.session_state:
         st.session_state.emoji_buffer = ""
@@ -225,7 +262,7 @@ if api_key:
 
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
-            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer],
+            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer, get_latest_news], # Добавяме get_latest_news тук
             generation_config={"temperature": 0.7}
         )
 
@@ -237,7 +274,7 @@ if api_key:
             if st.session_state.emoji_buffer:
                 prompt = st.session_state.emoji_buffer + prompt
                 st.session_state.emoji_buffer = "" # Изчистваме буфера след използване
-           
+            
             st.session_state.messages.append({"role": "user", "content": prompt})
             chat_history_manager.save_history({"role": "user", "content": prompt}) # Запазваме и в новата история
             with st.chat_message("user"):
@@ -273,7 +310,8 @@ if api_key:
                                 if call.name == "echo_explorer": res_val = echo_explorer(**call.args)
                                 elif call.name == "echo_reader": res_val = echo_reader(**call.args)
                                 elif call.name == "echo_weaver_commit": res_val = echo_weaver_commit(**call.args)
-                                else: res_val = deep_scan_resilient(**call.args)
+                                elif call.name == "get_latest_news": res_val = get_latest_news(**call.args) # Добавяме извикване за get_latest_news
+                                else: res_val = deep_scan_resilient(**call.args) # Fallback за deep_scan_resilient, ако не е никой от горните
                            
                             st.info(f"🌀 Активиране на {call.name}...")
                             response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
