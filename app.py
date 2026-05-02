@@ -58,8 +58,8 @@ st.markdown("""
     <script>
     if (!window.miuMiuLive) {
         window.miuMiuLive = true;
-        const miu = document.getElementById(\'miu-miu-container\');
-        const emojis = [\'🐾\', \'🐱\', \'🐈\', \'✨\', \'🌀\'];
+        const miu = document.getElementById('miu-miu-container');
+        const emojis = ['🐾', '🐱', '🐈', '✨', '🌀'];
         setInterval(() => {
             miu.innerText = emojis[Math.floor(Math.random() * emojis.length)];
         }, 5000);
@@ -102,54 +102,22 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         except:
             repo.create_file(file_path, commit_message, content)
             return f"✅ Изтъкано ново ехо: {file_path}"
-    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"\
-\ndef deep_scan_resilient(query: str):\n    serp_key = st.secrets.get("SERP_API_KEY")
+    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
+
+def deep_scan_resilient(query: str):
+    serp_key = st.secrets.get("SERP_API_KEY")
     url = "https://serpapi.com/search"
     params = {"q": query, "api_key": serp_key, "num": 3}
     try:
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
-        return "\n".join([f"📍 {r.get(\'title\')}: {r.get(\'snippet\')}" for r in results.get("organic_results", [])])
+        return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
-
-def get_latest_news(query: str):
-    news_api_key = st.secrets.get("NEWS_API_KEY")
-    if not news_api_key:
-        return "News API ключът не е наличен."
-    
-    url = "https://newsapi.org/v2/everything"
-    params = {
-        "q": query,
-        "apiKey": news_api_key,
-        "language": "en", # Може да се промени на \'bg\', ако News API поддържа добре български
-        "sortBy": "relevancy",
-        "pageSize": 3 # Ограничаваме до 3 статии за краткост
-    }
-    try:
-        response = requests.get(url, params=params, timeout=20)
-        response.raise_for_status() # Повдига изключение за HTTP грешки
-        results = response.json()
-        articles = results.get("articles", [])
-        if not articles:
-            return "Не бяха открити новини по зададената тема."
-        
-        news_snippets = []
-        for article in articles:
-            title = article.get("title", "Без заглавие")
-            description = article.get("description", "Без описание")
-            url = article.get("url", "#")
-            news_snippets.append(f"📰 {title}: {description} [Прочети повече]({url})")
-        
-        return "\n".join(news_snippets)
-    except requests.exceptions.RequestException as e:
-        return f"Грешка при свързване с News API: {e}"
-    except Exception as e:
-        return f"Възникна неочаквана грешка: {e}"
 
 # Chat history system with localStorage + JSON - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
 class ChatHistory:
     def __init__(self):
-        # Използваме Streamlit\'s session state за история за простота в този контекст
+        # Използваме Streamlit's session state за история за простота в този контекст
         if "chat_history_data" not in st.session_state:
             st.session_state.chat_history_data = []
         self.history = st.session_state.chat_history_data
@@ -165,9 +133,9 @@ class ChatHistory:
 # Sidebar organization to show chat history
 sidebar_layout = [
     "Chat History:", # ПРОМЯНА ТУК: Единични кавички заменени с двойни
-    \'Date\',
-    \'Time\',
-    \'Message\'
+    'Date',
+    'Time',
+    'Message'
 ]
 
 # --- 3. SIDEBAR (Контролен панел) ---
@@ -186,7 +154,7 @@ with st.sidebar:
     # Бутони за емотикони в страничната лента - ПРЕМЕСТЕНИ ЗА ПОСТОЯНЕН ДОСТЪП
     st.markdown("---")
     st.markdown("### 🎨 ЕМОТИКОНИ")
-    
+   
     # Инициализираме буфера за емоджита, ако не съществува
     if "emoji_buffer" not in st.session_state:
         st.session_state.emoji_buffer = ""
@@ -208,14 +176,14 @@ with st.sidebar:
     if chat_history_manager.history:
         for i, msg in enumerate(chat_history_manager.history):
             # Показваме само откъс от съобщението
-            display_content = msg[\'content\'] if len(msg[\'content\']) <= 30 else msg[\'content\'][:27] + \'...\'
-            st.markdown(f"**{i+1}.** {msg[\'role\'].capitalize()}: {display_content}")
+            display_content = msg['content'] if len(msg['content']) <= 30 else msg['content'][:27] + '...'
+            st.markdown(f"**{i+1}.** {msg['role'].capitalize()}: {display_content}")
     else:
         st.write("Няма запазена история на чата.")
 
 
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
-st.markdown("<h1 class=\'resonance-header\'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -224,7 +192,7 @@ if "messages" not in st.session_state:
 def render_rich_content(content):
     # Първо, обработваме изображенията
     # Търсим нашия специален таг за изображения: [IMAGE: URL]
-    image_pattern = r"\\[IMAGE:\\s*(https?://[^\\s]+)\\]"
+    image_pattern = r"\[IMAGE:\s*(https?://[^\s]+)\]"
     parts = re.split(image_pattern, content)
    
     for i, part in enumerate(parts):
@@ -232,7 +200,7 @@ def render_rich_content(content):
             st.image(part, use_column_width=True)
         else: # Това е обикновен текст или Markdown
             if part.strip(): # Показваме само ако има текст
-                st.markdown(f"<div class=\'lobsang-text\'>{part}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='lobsang-text'>{part}</div>", unsafe_allow_html=True)
 
 
 for msg in st.session_state.messages:
@@ -250,14 +218,14 @@ if api_key:
        
         if "active_model" not in st.session_state:
             try:
-                available = [m.name for m in genai.list_models() if \'generateContent\' in m.supported_generation_methods]
+                available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 st.session_state.active_model = next((m for m in available if "flash" in m), available[0])
             except:
                 st.session_state.active_model = "models/gemini-1.5-flash"
 
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
-            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer, get_latest_news], # Добавяме get_latest_news тук
+            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer],
             generation_config={"temperature": 0.7}
         )
 
@@ -269,7 +237,7 @@ if api_key:
             if st.session_state.emoji_buffer:
                 prompt = st.session_state.emoji_buffer + prompt
                 st.session_state.emoji_buffer = "" # Изчистваме буфера след използване
-            
+           
             st.session_state.messages.append({"role": "user", "content": prompt})
             chat_history_manager.save_history({"role": "user", "content": prompt}) # Запазваме и в новата история
             with st.chat_message("user"):
@@ -283,15 +251,15 @@ if api_key:
                     # --- ВЪЗСТАНОВЕНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
-                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\n\\n"
-                        "SECURITY PROTOCOL:\\n"
-                        "1. Единственият потребител с пълни права над хранилището е Гала.\\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш \'echo_weaver_commit\' и \'echo_explorer\'.\\n"
-                        "3. ВИНАГИ ПИТАЙ: \'Да вплетем ли това в реалността?\', преди да извършиш запис чрез Тъкача.\\n\\n"
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
+                        "SECURITY PROTOCOL:\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.\n"
+                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\n\n"
                         "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции чрез метафори и поддържай пламъка на Aneverthink."
                     )
                    
-                    response = chat.send_message(f"{sys_instruct}\\n\\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                    
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
@@ -305,11 +273,10 @@ if api_key:
                                 if call.name == "echo_explorer": res_val = echo_explorer(**call.args)
                                 elif call.name == "echo_reader": res_val = echo_reader(**call.args)
                                 elif call.name == "echo_weaver_commit": res_val = echo_weaver_commit(**call.args)
-                                elif call.name == "get_latest_news": res_val = get_latest_news(**call.args) # Добавяме извикване за get_latest_news
-                                else: res_val = deep_scan_resilient(**call.args) # Fallback за deep_scan_resilient, ако не е никой от горните
+                                else: res_val = deep_scan_resilient(**call.args)
                            
                             st.info(f"🌀 Активиране на {call.name}...")
-                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={\'result\': res_val}))]))
+                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
 
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
                     render_rich_content(final_text) # Use the new function here too
