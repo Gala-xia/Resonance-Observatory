@@ -76,7 +76,8 @@ def echo_explorer(path: str = ""):
         g = Github(token)
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
-        return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
+        return "
+".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
     except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
 
 def echo_reader(file_path: str):
@@ -111,7 +112,8 @@ def deep_scan_resilient(query: str):
     try:
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
-        return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
+        return "
+".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
 
 def get_latest_news(query: str):
@@ -142,7 +144,8 @@ def get_latest_news(query: str):
             url = article.get("url", "#")
             news_snippets.append(f"📰 {title}: {description} [Прочети повече]({url})")
         
-        return "\n".join(news_snippets)
+        return "
+".join(news_snippets)
     except requests.exceptions.RequestException as e:
         return f"Грешка при свързване с News API: {e}"
     except Exception as e:
