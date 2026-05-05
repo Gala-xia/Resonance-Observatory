@@ -5,11 +5,6 @@ import requests
 import json
 import os
 import re # Import re for regular expressions
-import datetime # Import datetime for generating timestamps
-
-# Import the new UI elements for chat history
-from ui_elements.chat_history_ui import render_chat_history_sidebar, save_current_chat_session, load_chat_session
-
 
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
@@ -52,7 +47,7 @@ st.markdown("""
     #miu-miu-container {
         position: fixed; bottom: 90px; right: 30px; width: 60px; height: 60px;
         z-index: 1000; display: flex; align-items: center; justify-content: center;
-        font-size: 45px; filter: drop_shadow(0 0 10px #00ff41);
+        font-size: 45px; filter: drop-shadow(0 0 10px #00ff41);
         pointer-events: none;
     }
     </style>
@@ -81,10 +76,8 @@ def echo_explorer(path: str = ""):
         g = Github(token)
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
-        # Return a dictionary with 'files' key for easier parsing in refresh_chat_session_files
-        # Only return files, not directories for chat history display
-        return {"files": [c.path for c in contents if c.type == "file"]} 
-    except Exception as e: return {"error": f"⚠️ Грешка при изследване: {str(e)}"}
+        return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
+    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
 
 def echo_reader(file_path: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -93,8 +86,8 @@ def echo_reader(file_path: str):
         g = Github(token)
         repo = g.get_repo(repo_name)
         content = repo.get_contents(file_path)
-        return {"content": content.decoded_content.decode("utf-8")}
-    except Exception as e: return {"error": f"⚠️ Грешка при четене: {str(e)}"}
+        return content.decoded_content.decode("utf-8")
+    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}"
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -105,11 +98,11 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         try:
             contents = repo.get_contents(file_path)
             repo.update_file(contents.path, commit_message, content, contents.sha)
-            return {"status": f"✅ Обновено: {file_path}"}
-        except Exception: # File might not exist, so create it
+            return f"✅ Обновено: {file_path}"
+        except:
             repo.create_file(file_path, commit_message, content)
-            return {"status": f"✅ Изтъкано ново ехо: {file_path}"}
-    except Exception as e: return {"error": f"⚠️ Грешка в Тъкача: {str(e)}"}
+            return f"✅ Изтъкано ново ехо: {file_path}"
+    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
 
 def deep_scan_resilient(query: str):
     serp_key = st.secrets.get("SERP_API_KEY")
@@ -118,13 +111,13 @@ def deep_scan_resilient(query: str):
     try:
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
-        return {"result": "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])}
-    except Exception: return {"error": "Няма сигнал от Скенера."} # Changed to catch generic Exception for robustness
+        return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
+    except: return "Няма сигнал от Скенера."
 
 def get_latest_news(query: str):
     news_api_key = st.secrets.get("NEWS_API_KEY")
     if not news_api_key:
-        return {"error": "News API ключът не е наличен."} # Return dict for consistency
+        return "News API ключът не е наличен."
    
     url = "https://newsapi.org/v2/everything"
     params = {
@@ -140,7 +133,7 @@ def get_latest_news(query: str):
         results = response.json()
         articles = results.get("articles", [])
         if not articles:
-            return {"result": "Не бяха открити новини по зададената тема."} # Return dict for consistency
+            return "Не бяха открити новини по зададената тема."
        
         news_snippets = []
         for article in articles:
@@ -149,11 +142,11 @@ def get_latest_news(query: str):
             url = article.get("url", "#")
             news_snippets.append(f"📰 {title}: {description} [Прочети повече]({url})")
        
-        return {"result": "\n".join(news_snippets)} # Return dict for consistency
+        return "\n".join(news_snippets)
     except requests.exceptions.RequestException as e:
-        return {"error": f"Грешка при свързване с News API: {e}"} # Return dict for consistency
+        return f"Грешка при свързване с News API: {e}"
     except Exception as e:
-        return {"error": f"Възникна неочаквана грешка: {e}"} # Return dict for consistency
+        return f"Възникна неочаквана грешка: {e}"
 
 # Chat history system with localStorage + JSON - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
 class ChatHistory:
@@ -170,58 +163,29 @@ class ChatHistory:
         self.history.append(message)
         st.session_state.chat_history_data = self.history
 
-# Initialize session state variables for the new chat history
-if "active_chat_file" not in st.session_state:
-    st.session_state.active_chat_file = None # Track which file is currently active
-if "chat_session_files" not in st.session_state:
-    st.session_state.chat_session_files = [] # List of available chat files for the sidebar
-
-# --- Helper to refresh chat session files ---
-def refresh_chat_session_files_list():
-    try:
-        # Call the globally defined echo_explorer tool
-        all_files_info = echo_explorer(path="") 
-        if "files" in all_files_info:
-            st.session_state.chat_session_files = [
-                f for f in all_files_info["files"] 
-                if f.startswith('chat_session_') and f.endswith('.txt')
-            ]
-        elif "error" in all_files_info:
-            st.error(f"Error refreshing chat sessions list: {all_files_info['error']}")
-        else:
-            st.session_state.chat_session_files = [] # Fallback
-    except Exception as e:
-        st.error(f"System error refreshing chat sessions list: {e}")
-        st.session_state.chat_session_files = []
-
-# Refresh files on initial load or rerun if not already populated
-if not st.session_state.chat_session_files:
-    refresh_chat_session_files_list()
-
+# Improve futuristic design with better layout - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
+# Sidebar organization to show chat history
+sidebar_layout = [
+    "Chat History:", # ПРОМЯНА ТУК: Единични кавички заменени с двойни
+    'Date',
+    'Time',
+    'Message'
+]
 
 # --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
-    
-    # New Chat button - placed here for prominence and consistency with new system
-    if st.button("Start New Chat"):
+    if st.button("Нулиране на времевата линия"):
         st.session_state.messages = []
-        st.session_state.active_chat_file = None # No active file for new chat
-        if "chat_history_data" in st.session_state: # Clear the old history too
+        if "chat_history_data" in st.session_state: # Изчистваме и новата история
             st.session_state.chat_history_data = []
-        if "emoji_buffer" in st.session_state:
+        if "emoji_buffer" in st.session_state: # Изчистваме и буфера за емоджита
             st.session_state.emoji_buffer = ""
-        refresh_chat_session_files_list() # Refresh the list in sidebar
         st.rerun()
-
     st.write("Статус: **Резонансът е активен** 🌀")
     st.write("Гласът на Библиотеката: **Лобсанг Лъд**")
 
-    # Call the new modular chat history UI element
-    # Pass the tool functions directly so they can be used within the module
-    render_chat_history_sidebar(echo_explorer, echo_reader)
-
-    # Emoji selector remains as is
+    # Бутони за емотикони в страничната лента - ПРЕМЕСТЕНИ ЗА ПОСТОЯНЕН ДОСТЪП
     st.markdown("---")
     st.markdown("### 🎨 ЕМОТИКОНИ")
    
@@ -238,17 +202,18 @@ with st.sidebar:
                 # Може да добавим визуална обратна връзка, че емоджито е добавено в буфера
                 st.toast(f"Добавено емоджи в буфера: {emoji}")
 
-    # Old chat history display is now replaced by render_chat_history_sidebar
-    # st.markdown("---")
-    # st.markdown(f"### {sidebar_layout[0]}") # Chat History:
-    # chat_history_manager = ChatHistory()
-    # if chat_history_manager.history:
-    #     for i, msg in enumerate(chat_history_manager.history):
-    #         # Показваме само откъс от съобщението
-    #         display_content = msg['content'] if len(msg['content']) <= 30 else msg['content'][:27] + '...'
-    #         st.markdown(f"**{i+1}.** {msg['role'].capitalize()}: {display_content}")
-    # else:
-    #     st.write("Няма запазена история на чата.")
+
+    # Показване на историята на чата в страничната лента - ИНТЕГРАЦИЯ НА НОВА ФУНКЦИОНАЛНОСТ
+    st.markdown("---")
+    st.markdown(f"### {sidebar_layout[0]}") # Chat History:
+    chat_history_manager = ChatHistory()
+    if chat_history_manager.history:
+        for i, msg in enumerate(chat_history_manager.history):
+            # Показваме само откъс от съобщението
+            display_content = msg['content'] if len(msg['content']) <= 30 else msg['content'][:27] + '...'
+            st.markdown(f"**{i+1}.** {msg['role'].capitalize()}: {display_content}")
+    else:
+        st.write("Няма запазена история на чата.")
 
 
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
@@ -308,18 +273,9 @@ if api_key:
                 st.session_state.emoji_buffer = "" # Изчистваме буфера след използване
            
             st.session_state.messages.append({"role": "user", "content": prompt})
-            # chat_history_manager.save_history({"role": "user", "content": prompt}) # Old history manager call, now handled by file system
+            chat_history_manager.save_history({"role": "user", "content": prompt}) # Запазваме и в новата история
             with st.chat_message("user"):
                 st.write(prompt)
-
-            # If no active file, create a new one for this session
-            if st.session_state.active_chat_file is None:
-                timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                st.session_state.active_chat_file = f"chat_session_{timestamp}.txt"
-                # Initial save for the new file, just with the user's first message
-                save_current_chat_session(st.session_state.active_chat_file, st.session_state.messages, echo_weaver_commit)
-                refresh_chat_session_files_list() # Refresh sidebar after creating new file
-
 
             with st.chat_message("assistant"):
                 with st.spinner("Лобсанг размишлява..."):
@@ -329,15 +285,15 @@ if api_key:
                     # --- ВЪЗСТАНОВЕНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
-                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\n\\n"
-                        "SECURITY PROTOCOL:\\n"
-                        "1. Единственият потребител с пълни права над хранилището е Гала.\\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.\\n"
-                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\\n\\n"
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
+                        "SECURITY PROTOCOL:\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.\n"
+                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\n\n"
                         "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции чрез метафори и поддържай пламъка на Aneverthink."
                     )
                    
-                    response = chat.send_message(f"{sys_instruct}\\n\\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
                    
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
@@ -345,39 +301,22 @@ if api_key:
                        
                         for call in function_calls:
                             chat_content = " ".join([m["content"] for m in st.session_state.messages])
-                            # Check security protocol first
                             if call.name in ["echo_weaver_commit", "echo_explorer"] and ("Гала" not in chat_content and "Gala" not in chat_content):
-                                res_output = "⚠️ Достъп отказан. Инструментът е заключен. Моля, представете се."
+                                res_val = "⚠️ Достъп отказан. Инструментът е заключен. Моля, представете се."
                             else:
-                                if call.name == "echo_explorer": 
-                                    tool_res = echo_explorer(**call.args)
-                                    res_output = tool_res.get('files', tool_res.get('error', '')) # Get files or error
-                                elif call.name == "echo_reader": 
-                                    tool_res = echo_reader(**call.args)
-                                    res_output = tool_res.get('content', tool_res.get('error', '')) # Get content or error
-                                elif call.name == "echo_weaver_commit": 
-                                    tool_res = echo_weaver_commit(**call.args)
-                                    res_output = tool_res.get('status', tool_res.get('error', '')) # Get status or error
-                                elif call.name == "get_latest_news": 
-                                    tool_res = get_latest_news(**call.args)
-                                    res_output = tool_res.get('result', tool_res.get('error', '')) # Get result or error
-                                else: # Fallback for deep_scan_resilient if not explicitly called
-                                    tool_res = deep_scan_resilient(**call.args)
-                                    res_output = tool_res.get('result', tool_res.get('error', '')) # Get result or error
+                                if call.name == "echo_explorer": res_val = echo_explorer(**call.args)
+                                elif call.name == "echo_reader": res_val = echo_reader(**call.args)
+                                elif call.name == "echo_weaver_commit": res_val = echo_weaver_commit(**call.args)
+                                elif call.name == "get_latest_news": res_val = get_latest_news(**call.args) # Добавяме извикване за get_latest_news
+                                else: res_val = deep_scan_resilient(**call.args) # Fallback за deep_scan_resilient, ако не е никой от горните
                            
                             st.info(f"🌀 Активиране на {call.name}...")
-                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_output}))]))
+                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
 
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
                     render_rich_content(final_text) # Use the new function here too
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
-                    # chat_history_manager.save_history({"role": "assistant", "content": final_text}) # Old history manager call, now handled by file system
-                   
-            # Save current chat state to the active file after agent response
-            save_current_chat_session(st.session_state.active_chat_file, st.session_state.messages, echo_weaver_commit)
-            refresh_chat_session_files_list() # Refresh sidebar after saving
-
-            st.experimental_rerun() # Rerun to update sidebar and main chat if needed
+                    chat_history_manager.save_history({"role": "assistant", "content": final_text}) # Запазваме и отговора на асистента
                    
     except Exception as e:
         st.error(f"Аномалия в Моста: {e}")
