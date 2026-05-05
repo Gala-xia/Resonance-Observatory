@@ -54,8 +54,7 @@ def load_chat_session(file_path, echo_reader_func):
         
         # Parse content back into messages format
         loaded_messages = []
-        for line in content.split('
-'):
+        for line in content.split('\n'):
             if line.strip():
                 # Simple parsing: assumes "role: content" format
                 if line.startswith("user: "):
@@ -81,8 +80,7 @@ def save_current_chat_session(file_path, messages, echo_weaver_commit_func):
     try:
         content_to_save = ""
         for msg in messages:
-            content_to_save += f"{msg['role']}: {msg['content']}
-"
+            content_to_save += f"{msg['role']}: {msg['content']}\n"
         
         commit_message = f"Updated chat session: {file_path}"
         response = echo_weaver_commit_func(
