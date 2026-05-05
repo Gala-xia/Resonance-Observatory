@@ -313,6 +313,6 @@ if prompt:
             render_rich_content(final_text) # Use the new function here too
             st.session_state.messages.append({"role": "assistant", "content": final_text})
             chat_history_manager.save_message_to_current_session("assistant", final_text) # Запазваме и отговора на асистента
-           
-except Exception as e:
-    st.error(f"Аномалия в Моста: {e}")
+
+    except Exception as e:
+        st.error(f"Аномалия в Моста: {e}")
