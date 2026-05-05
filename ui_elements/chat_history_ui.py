@@ -1,76 +1,101 @@
 import streamlit as st
 import os
-import re
-from datetime import datetime # Added for timestamp generation
+import datetime
 
-def get_chat_session_files(explorer_func):
-    """Fetches a list of chat session files from the repository."""
-    try:
-        response = explorer_func(path="")
-        files = response.get("echo_explorer_response", {}).get("result", {}).get("files", [])
-        chat_files = [f for f in files if re.match(r"chat_session_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.txt", f)]
-        return sorted(chat_files, reverse=True)
-    except Exception as e:
-        st.sidebar.error(f"Грешка при извличане на файлове със сесии: {e}") # Changed st.error to st.sidebar.error
-        return []
+def render_chat_history_sidebar(echo_explorer_func, echo_reader_func):
+    """
+    Renders the interactive chat history in the sidebar.
+    Allows users to load previous chat sessions.
+    """
+    st.markdown("---")
+    st.subheader("Saved Sessions")
 
-def display_chat_history_sidebar(explorer_func, reader_func, active_file_state_key="active_chat_file"):
-    """Displays the interactive chat history in the sidebar."""
-    st.sidebar.title("История на Разговорите")
-    chat_files = get_chat_session_files(explorer_func)
+    if "chat_session_files" not in st.session_state:
+        st.session_state.chat_session_files = [] # This will be populated by app.py
 
-    if not chat_files:
-        st.sidebar.info("Няма запазени разговори.")
-        return
-
-    for file_name in chat_files:
-        match = re.match(r"chat_session_(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})\.txt", file_name)
-        if match:
-            date_str = match.group(1)
-            time_str = match.group(2).replace('-', ':')
-            display_title = f"Разговор от {date_str}, {time_str}"
-        else:
-            display_title = file_name
-
-        if st.sidebar.button(display_title, key=f"load_chat_{file_name}"):
-            st.session_state[active_file_state_key] = file_name
-            load_chat_session(file_name, reader_func)
-            st.rerun()
-
-def load_chat_session(file_name, reader_func, messages_state_key="messages"):
-    """Loads a selected chat session into st.session_state.messages."""
-    try:
-        response = reader_func(file_path=file_name)
-        content = response.get("echo_reader_response", {}).get("result", "")
-
-        parsed_messages = []
-        for line in content.split('\\n'):
-            if ": " in line:
-                role, msg_content = line.split(": ", 1)
-                parsed_messages.append({"role": role.strip(), "content": msg_content.strip()})
-        
-        st.session_state[messages_state_key] = parsed_messages
-        st.sidebar.success(f"Заредена сесия: {file_name}") # Changed st.success to st.sidebar.success
-    except Exception as e:
-        st.sidebar.error(f"Грешка при зареждане на сесия {file_name}: {e}") # Changed st.error to st.sidebar.error
-        st.session_state[messages_state_key] = []
-
-def save_current_chat_session(weaver_commit_func, explorer_func, reader_func, active_file_state_key="active_chat_file", messages_state_key="messages"): # Added explorer_func, reader_func
-    """Saves the current chat session to the active file."""
-    if active_file_state_key not in st.session_state or not st.session_state[active_file_state_key]:
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        file_name = f"chat_session_{timestamp}.txt"
-        st.session_state[active_file_state_key] = file_name
-        # If a new file is created, immediately refresh the sidebar to show it
-        st.rerun() # Added rerun here to update sidebar after new file creation
+    if not st.session_state.chat_session_files:
+        st.info("No saved chat sessions yet.")
     else:
-        file_name = st.session_state[active_file_state_key]
+        # Sort files by date (most recent first)
+        # Assuming filenames are like 'chat_session_YYYY-MM-DD_HH-MM-SS.txt'
+        st.session_state.chat_session_files.sort(reverse=True)
 
-    content_to_save = "\\n".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.get(messages_state_key, [])])
-    commit_message = f"Актуализиран разговор: {file_name}"
+        for file_name in st.session_state.chat_session_files:
+            # Extract timestamp from filename for display
+            try:
+                timestamp_str = file_name.replace("chat_session_", "").replace(".txt", "")
+                dt_object = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d_%H-%M-%S")
+                display_name = f"{dt_object.strftime('%Y-%m-%d %H:%M')} (Load)"
+            except ValueError:
+                display_name = f"{file_name} (Load)" # Fallback if name format is unexpected
 
+            if st.button(display_name, key=f"load_{file_name}"):
+                load_chat_session(file_name, echo_reader_func)
+                st.experimental_rerun()
+    st.markdown("---")
+
+
+def load_chat_session(file_path, echo_reader_func):
+    """
+    Loads a specific chat session from a file into st.session_state.messages.
+    """
     try:
-        weaver_commit_func(file_path=file_name, content=content_to_save, commit_message=commit_message)
-        # st.sidebar.success(f"Разговорът е запазен в: {file_name}") # Removed as it causes duplicate message on rerun
+        response_content = echo_reader_func(file_path=file_path) # Call the passed echo_reader function
+        
+        # Check if response_content is a dict with 'content' key
+        if isinstance(response_content, dict) and 'content' in response_content:
+            content = response_content['content']
+        elif isinstance(response_content, dict) and 'error' in response_content:
+             st.error(f"Error reading file {file_path}: {response_content['error']}")
+             return # Exit if error
+        else:
+            # Assume it's a string if not the expected dict format or if the tool returns raw string
+            content = str(response_content) 
+        
+        # Parse content back into messages format
+        loaded_messages = []
+        for line in content.split('
+'):
+            if line.strip():
+                # Simple parsing: assumes "role: content" format
+                if line.startswith("user: "):
+                    loaded_messages.append({"role": "user", "content": line[len("user: "):]})
+                elif line.startswith("assistant: "):
+                    loaded_messages.append({"role": "assistant", "content": line[len("assistant: "):]})
+                # Add more roles if needed
+        
+        st.session_state.messages = loaded_messages
+        st.session_state.active_chat_file = file_path
+        st.success(f"Loaded session: {file_path}")
+
     except Exception as e:
-        st.sidebar.error(f"Грешка при запазване на разговора: {e}")
+        st.error(f"Error loading chat session {file_path}: {e}")
+        st.session_state.messages = [] # Clear messages on error
+        st.session_state.active_chat_file = None
+
+
+def save_current_chat_session(file_path, messages, echo_weaver_commit_func):
+    """
+    Saves the current chat session to a specified file.
+    """
+    try:
+        content_to_save = ""
+        for msg in messages:
+            content_to_save += f"{msg['role']}: {msg['content']}
+"
+        
+        commit_message = f"Updated chat session: {file_path}"
+        response = echo_weaver_commit_func(
+            file_path=file_path,
+            content=content_to_save,
+            commit_message=commit_message
+        )
+        if isinstance(response, dict) and 'status' in response:
+            st.success(f"Session saved: {file_path}")
+        elif isinstance(response, dict) and 'error' in response:
+            st.error(f"Error saving chat session {file_path}: {response['error']}")
+        else:
+            st.success(f"Session saved: {file_path} (tool response: {response})")
+
+    except Exception as e:
+        st.error(f"Error saving chat session {file_path}: {e}")
