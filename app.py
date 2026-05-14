@@ -77,8 +77,8 @@ def echo_explorer(path: str = ""):
         g = Github(token)
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
-        return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
-    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
+        return {"files": [{"name": c.path, "type": c.type} for c in contents]} # Modified to return a dict with a list of file info
+    except Exception as e: return {"error": f"⚠️ Грешка при изследване: {str(e)}"} # Modified to return dict for error
 
 
 def echo_reader(file_path: str):
@@ -88,8 +88,8 @@ def echo_reader(file_path: str):
         g = Github(token)
         repo = g.get_repo(repo_name)
         content = repo.get_contents(file_path)
-        return content.decoded_content.decode("utf-8")
-    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}"
+        return {"content": content.decoded_content.decode("utf-8")} # Modified to return dict with content
+    except Exception as e: return {"error": f"⚠️ Грешка при четене: {str(e)}"} # Modified to return dict for error
 
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
@@ -101,11 +101,11 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         try:
             contents = repo.get_contents(file_path)
             repo.update_file(contents.path, commit_message, content, contents.sha)
-            return f"✅ Обновено: {file_path}"
-        except:
+            return {"status": f"✅ Обновено: {file_path}"} # Modified to return dict
+        except Exception: # Catch specific exception if file not found for clarity
             repo.create_file(file_path, commit_message, content)
-            return f"✅ Изтъкано ново ехо: {file_path}"
-    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
+            return {"status": f"✅ Изтъкано ново ехо: {file_path}"} # Modified to return dict
+    except Exception as e: return {"error": f"⚠️ Грешка в Тъкача: {str(e)}"} # Modified to return dict
 
 
 def deep_scan_resilient(query: str):
@@ -115,14 +115,14 @@ def deep_scan_resilient(query: str):
     try:
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
-        return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
-    except: return "Няма сигнал от Скенера."
+        return {"results": [{"title": r.get('title'), "snippet": r.get('snippet')} for r in results.get("organic_results", [])]} # Modified to return dict
+    except Exception: return {"error": "Няма сигнал от Скенера."} # Modified to return dict
 
 
 def get_latest_news(query: str):
     news_api_key = st.secrets.get("NEWS_API_KEY")
     if not news_api_key:
-        return "News API ключът не е наличен."
+        return {"error": "News API ключът не е наличен."} # Modified to return dict
 
     url = "https://newsapi.org/v2/everything"
     params = {
@@ -138,20 +138,19 @@ def get_latest_news(query: str):
         results = response.json()
         articles = results.get("articles", [])
         if not articles:
-            return "Не бяха открити новини по зададената тема."
+            return {"message": "Не бяха открити новини по зададената тема."} # Modified to return dict
 
         news_snippets = []
         for article in articles:
             title = article.get("title", "Без заглавие")
             description = article.get("description", "Без описание")
             url = article.get("url", "#")
-            news_snippets.append(f"📰 {title}: {description} [Прочети повече]({url})")
-
-        return "\n".join(news_snippets)
+            news_snippets.append({"title": title, "description": description, "url": url})
+        return {"articles": news_snippets} # Modified to return dict
     except requests.exceptions.RequestException as e:
-        return f"Грешка при свързване с News API: {e}"
+        return {"error": f"Грешка при свързване с News API: {e}"} # Modified to return dict
     except Exception as e:
-        return f"Възникна неочаквана грешка: {e}"
+        return {"error": f"Възникна неочаквана грешка: {e}"} # Modified to return dict
 
 # Chat history system with localStorage + JSON - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
 class ChatHistory:
@@ -178,19 +177,11 @@ class ChatSessionManager:
         Връща списък с имената на файловете.
         """
         try:
-            # Първо, опитваме се да създадем директорията, ако не съществува
-            # (тази логика ще бъде вградена в app.py, когато извикаме мениджъра за първи път,
-            # но echo_explorer ще ни каже дали съществува)
-
-            # echo_explorer връща речник, където 'files' е списък с речници,
-            # всеки с ключ 'name' за името на файла.
-            explorer_result = default_api.echo_explorer(path=self.session_directory)
-
-            # Проверяваме дали резултатът съдържа 'files' и дали не е празен
+            explorer_result = echo_explorer(path=self.session_directory) # Use the local echo_explorer
             if explorer_result and 'files' in explorer_result:
                 session_files = [
-                    f['name'] for f in explorer_result['files'] 
-                    if f['name'].endswith(('.md', '.txt'))
+                    f['name'] for f in explorer_result['files']
+                    if f['type'] == 'file' and f['name'].endswith(('.md', '.txt'))
                 ]
                 return sorted(session_files, reverse=True) # Сортираме по дата/име
             else:
@@ -206,7 +197,7 @@ class ChatSessionManager:
         """
         full_path = f"{self.session_directory}{file_name}"
         try:
-            reader_result = default_api.echo_reader(file_path=full_path)
+            reader_result = echo_reader(file_path=full_path) # Use the local echo_reader
             content = reader_result.get('content', '')
 
             messages = []
@@ -246,11 +237,15 @@ class ChatSessionManager:
         Това е помощна функция, която ще се извика преди първото използване на manager-а.
         """
         try:
-            explorer_result = default_api.echo_explorer(path=self.session_directory)
-            if not explorer_result or 'files' not in explorer_result:
-                # Директорията не съществува или е празна.
-                # Ще я създадем при първия опит за запис на сесия.
-                # Засега просто уведомяваме, че може да не съществува.
+            explorer_result = echo_explorer(path=self.session_directory) # Use the local echo_explorer
+            # Check if the path exists and is a directory
+            if explorer_result and 'files' in explorer_result:
+                # If there are files, the directory exists.
+                pass
+            else:
+                # The directory does not exist or is empty.
+                # We will create it upon the first attempt to save a session.
+                # For now, just inform that it might not exist.
                 st.info(f"Директорията '{self.session_directory}' изглежда липсва или е празна. Ще бъде създадена при първия запис на сесия.")
         except Exception as e:
             st.warning(f"Не може да се провери за съществуването на директория '{self.session_directory}': {e}")
@@ -258,7 +253,7 @@ class ChatSessionManager:
 # Improve futuristic design with better layout - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
 # Sidebar organization to show chat history
 sidebar_layout = [
-    "Chat History:", # ПРОМЯНА ТУК: Единични кавички заменени с двойни
+    "Chat History:",
     'Date',
     'Time',
     'Message'
@@ -276,6 +271,36 @@ with st.sidebar:
         st.rerun()
     st.write("Статус: **Резонансът е активен** 🌀")
     st.write("Гласът на Библиотеката: **Лобсанг Лъд**")
+
+    # Initialize ChatSessionManager
+    if "session_manager" not in st.session_state:
+        st.session_state.session_manager = ChatSessionManager()
+    session_manager = st.session_state.session_manager
+
+    st.markdown("---")
+    st.markdown("### ⏳ Запазени Сесии")
+    session_manager.ensure_session_directory_exists() # Check for directory existence
+
+    available_sessions = session_manager.list_sessions()
+
+    if available_sessions:
+        selected_session = st.selectbox(
+            "Избери сесия:",
+            ["Създай нова сесия"] + available_sessions,
+            key="session_selector"
+        )
+
+        if selected_session == "Създай нова сесия":
+            st.info("Избери съществуваща сесия или продължи разговора, за да създадеш нова.")
+        else:
+            if st.button(f"Зареди {selected_session}", key=f"load_session_btn_{selected_session}"):
+                loaded_messages = session_manager.load_session(selected_session)
+                st.session_state.messages = loaded_messages
+                st.session_state.chat_history_data = loaded_messages # Update the ChatHistory instance too
+                st.rerun()
+    else:
+        st.write("Няма запазени чат сесии.")
+        st.info("Продължи разговора, за да създадеш първата си сесия.")
 
     # Бутони за емотикони в страничната лента - ПРЕМЕСТЕНИ ЗА ПОСТОЯНЕН ДОСТЪП
     st.markdown("---")
@@ -298,14 +323,13 @@ with st.sidebar:
     # Показване на историята на чата в страничната лента - ИНТЕГРАЦИЯ НА НОВА ФУНКЦИОНАЛНОСТ
     st.markdown("---")
     st.markdown(f"### {sidebar_layout[0]}") # Chat History:
-    chat_history_manager = ChatHistory()
-    if chat_history_manager.history:
-        for i, msg in enumerate(chat_history_manager.history):
+    if st.session_state.chat_history_data:
+        for i, msg in enumerate(st.session_state.chat_history_data):
             # Показваме само откъс от съобщението
             display_content = msg['content'] if len(msg['content']) <= 30 else msg['content'][:27] + '...'
             st.markdown(f"**{i+1}.** {msg['role'].capitalize()}: {display_content}")
     else:
-        st.write("Няма запазена история на чата.")
+        st.write("Няма активна история на чата.")
 
 
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
@@ -365,6 +389,7 @@ if api_key:
                 st.session_state.emoji_buffer = "" # Изчистваме буфера след използване
 
             st.session_state.messages.append({"role": "user", "content": prompt})
+            chat_history_manager = ChatHistory() # Initialize ChatHistory here to save the current prompt
             chat_history_manager.save_history({"role": "user", "content": prompt}) # Запазваме и в новата история
             with st.chat_message("user"):
                 st.write(prompt)
@@ -377,17 +402,17 @@ if api_key:
                     # --- ВЪЗСТАНОВЕНИ И АКТУАЛИЗИРАНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
-                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\n\\n"
-                        "SECURITY PROTOCOL:\\n"
-                        "1. Единственият потребител с пълни права над хранилището е Гала.\\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.\\n"
-                        "3. ВИНАГИ ПИТАЙ: \'Да вплетем ли това в реалността?\', преди да извършиш запис чрез Тъкача.\\n"
-                        "4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.\\n"
-                        "5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез \'echo_weaver_commit\', ВИНАГИ първо прочети цялото текущо съдържание на файла с \'echo_reader\'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.\\n\\n"
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
+                        "SECURITY PROTOCOL:\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.\n"
+                        "3. ВИНАГИ ПИТАЙ: \'Да вплетем ли това в реалността?\', преди да извършиш запис чрез Тъкача.\n"
+                        "4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.\n"
+                        "5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез \'echo_weaver_commit\', ВИНАГИ първо прочети цялото текущо съдържание на файла с \'echo_reader\'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.\n\n"
                         "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори, когато е уместно или поискано за разяснение, но не е задължително да ги използваш всеки път. Поддържай пламъка на Aneverthink."
                     )
 
-                    response = chat.send_message(f"{sys_instruct}\\n\\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
 
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
@@ -398,8 +423,9 @@ if api_key:
                             # Валидация за Гала ПРЕДИ извикване на инструментите
                             is_gala = "Гала" in chat_content or "Gala" in chat_content # Проверка за "Гала" в целия чат контекст
 
+                            # Call the local functions directly, not default_api.echo_explorer etc.
                             if call.name in ["echo_weaver_commit", "echo_explorer"] and not is_gala:
-                                res_val = "⚠️ Достъп отказан. Инструментът е заключен. Моля, представете се като Гала."
+                                res_val = {"error": "⚠️ Достъп отказан. Инструментът е заключен. Моля, представете се като Гала."}
                             else:
                                 if call.name == "echo_explorer": res_val = echo_explorer(**call.args)
                                 elif call.name == "echo_reader": res_val = echo_reader(**call.args)
@@ -408,7 +434,8 @@ if api_key:
                                 else: res_val = deep_scan_resilient(**call.args) # Fallback за deep_scan_resilient, ако не е никой от горните
 
                             st.info(f"🌀 Активиране на {call.name}...")
-                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
+                            # Ensure the response from the tool is formatted correctly for genai.protos.FunctionResponse
+                            response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response=res_val))]))
 
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
                     render_rich_content(final_text) # Use the new function here too
