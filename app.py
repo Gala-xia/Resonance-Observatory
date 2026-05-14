@@ -77,7 +77,8 @@ def echo_explorer(path: str = ""):
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
         return "\n".join([f"📁 {c.path}" if c.type == "dir" else f"📄 {c.path}" for c in contents])
-    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"\
+    except Exception as e: return f"⚠️ Грешка при изследване: {str(e)}"
+
 
 def echo_reader(file_path: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -87,7 +88,8 @@ def echo_reader(file_path: str):
         repo = g.get_repo(repo_name)
         content = repo.get_contents(file_path)
         return content.decoded_content.decode("utf-8")
-    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}"\
+    except Exception as e: return f"⚠️ Грешка при четене: {str(e)}"
+
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -102,7 +104,8 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
         except:
             repo.create_file(file_path, commit_message, content)
             return f"✅ Изтъкано ново ехо: {file_path}"
-    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"\
+    except Exception as e: return f"⚠️ Грешка в Тъкача: {str(e)}"
+
 
 def deep_scan_resilient(query: str):
     serp_key = st.secrets.get("SERP_API_KEY")
@@ -112,7 +115,8 @@ def deep_scan_resilient(query: str):
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
         return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
-    except: return "Няма сигнал от Скенера."\
+    except: return "Няма сигнал от Скенера."
+
 
 def get_latest_news(query: str):
     news_api_key = st.secrets.get("NEWS_API_KEY")
@@ -150,16 +154,16 @@ def get_latest_news(query: str):
 
 # Chat history system with localStorage + JSON - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT (АДАПТИРАНА ЗА STREAMLIT)
 class ChatHistory:
-    def __init__(self): # КОРЕКЦИЯ ТУК: Премахната е излишната '\'
+    def __init__(self): # КОРЕКЦИЯ ТУК: Премахната е излишната ''
         # Използваме Streamlit's session state за история за простота в този контекст
         if "chat_history_data" not in st.session_state:
             st.session_state.chat_history_data = []
         self.history = st.session_state.chat_history_data
 
-    def load_history(self): # КОРЕКЦИЯ ТУК: Премахната е излишната '\'
+    def load_history(self): # КОРЕКЦИЯ ТУК: Премахната е излишната ''
         return st.session_state.chat_history_data
 
-    def save_history(self, message): # КОРЕКЦИЯ ТУК: Премахната е излишната '\'
+    def save_history(self, message): # КОРЕКЦИЯ ТУК: Премахната е излишната ''
         self.history.append(message)
         st.session_state.chat_history_data = self.history
 
