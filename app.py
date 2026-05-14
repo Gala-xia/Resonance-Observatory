@@ -202,7 +202,8 @@ class ChatSessionManager:
 
             messages = []
             # Разделяме съдържанието на редове и парсваме всяко съобщение
-            for line in content.strip().split('\n'):
+            for line in content.strip().split('
+'):
                 if line.startswith("User:"):
                     messages.append({"role": "user", "content": line[len("User:"):].strip()})
                 elif line.startswith("Lobsang:"):
@@ -222,7 +223,8 @@ class ChatSessionManager:
                 formatted_content.append(f"User: {msg['content']}")
             elif msg["role"] == "assistant":
                 formatted_content.append(f"Lobsang: {msg['content']}")
-        return "\n".join(formatted_content)
+        return "
+".join(formatted_content)
 
     def create_new_session_name(self):
         """
@@ -335,11 +337,8 @@ with st.sidebar:
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-if "chat_history_data" not in st.session_state:
-    st.session_state.chat_history_data = []
+st.session_state.setdefault("messages", [])
+st.session_state.setdefault("chat_history_data", [])
 
 # New function to render rich content
 def render_rich_content(content):
