@@ -4,8 +4,9 @@ from github import Github
 import requests
 import json
 import os
-import re # Import re for regular expressions
-import datetime # ADDED THIS LINE
+import re
+import datetime
+import pytz # ADDED THIS LINE
 
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
@@ -260,10 +261,11 @@ sidebar_layout = [
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
 
-    # Показване на текущата дата и час
-    current_time = datetime.datetime.now()
-    st.write(f"Текуща дата: **{current_time.strftime('%d.%m.%Y')}**")
-    st.write(f"Текущ час: **{current_time.strftime('%H:%M:%S')}**")
+    # Показване на текущата дата и час (КОРИГИРАНО ЗА ВРЕМЕВА ЗОНА)
+    madrid_tz = pytz.timezone("Europe/Madrid") # Define Madrid timezone
+    current_time_madrid = datetime.datetime.now(madrid_tz) # Get current time in Madrid timezone
+    st.write(f"Текуща дата: **{current_time_madrid.strftime('%d.%m.%Y')}**")
+    st.write(f"Текущ час: **{current_time_madrid.strftime('%H:%M:%S')}**")
     st.markdown("---")
 
     if st.button("Нулиране на времевата линия"):
@@ -308,6 +310,8 @@ with st.sidebar:
             # По-добро форматиране на заглавието
             try:
                 dt_obj = datetime.datetime.strptime(session_datetime_str, "%Y-%m-%d %H-%M-%S")
+                # Сега форматираме датата/часа от файла също във времевата зона на Мадрид, ако е необходимо
+                # (предполагаме, че файловете са запазени във времевата зона, в която е стартирано приложението)
                 display_title = dt_obj.strftime("Сесия от %d.%m.%Y, %H:%M")
             except ValueError:
                 display_title = f"Сесия: {session_datetime_str}" # Fallback ако форматирането е неуспешно
