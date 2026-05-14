@@ -4,7 +4,7 @@ from github import Github
 import requests
 import json
 import os
-import re
+import re # Import re for regular expressions
 import datetime # ADDED THIS LINE
 
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
@@ -181,14 +181,16 @@ class ChatSessionManager:
         Връща списък с имената на файловете.
         """
         try:
+            # Modified to call the local echo_explorer and expect a dictionary
             explorer_result = echo_explorer(path=self.session_directory)
 
+            # Проверяваме дали резултатът съдържа 'files' и дали не е празен
             if explorer_result and 'files' in explorer_result:
                 session_files = [
                     f['name'] for f in explorer_result['files']
                     if f['name'].endswith(('.md', '.txt'))
                 ]
-                return sorted(session_files, reverse=True)
+                return sorted(session_files, reverse=True) # Сортираме по дата/име
             else:
                 return []
         except Exception as e:
@@ -202,11 +204,13 @@ class ChatSessionManager:
         """
         full_path = f"{self.session_directory}{file_name}"
         try:
+            # Modified to call the local echo_reader and expect a dictionary
             reader_result = echo_reader(file_path=full_path)
             content = reader_result.get('content', '')
 
             messages = []
-            for line in content.strip().split('\n'):
+            # Разделяме съдържанието на редове и парсваме всяко съобщение
+            for line in content.strip().split('\\n'):
                 if line.startswith("User:"):
                     messages.append({"role": "user", "content": line[len("User:"):].strip()})
                 elif line.startswith("Lobsang:"):
@@ -226,7 +230,7 @@ class ChatSessionManager:
                 formatted_content.append(f"User: {msg['content']}")
             elif msg["role"] == "assistant":
                 formatted_content.append(f"Lobsang: {msg['content']}")
-        return "\n".join(formatted_content)
+        return "\\n".join(formatted_content)
 
     def create_new_session_name(self):
         """
@@ -241,8 +245,12 @@ class ChatSessionManager:
         Това е помощна функция, която ще се извика преди първото използване на manager-а.
         """
         try:
+            # Modified to call the local echo_explorer and expect a dictionary
             explorer_result = echo_explorer(path=self.session_directory)
             if not explorer_result or 'files' not in explorer_result:
+                # Директорията не съществува или е празна.
+                # Ще я създадем при първия опит за запис на сесия.
+                # Засега просто уведомяваме, че може да не съществува.
                 st.info(f"Директорията '{self.session_directory}' изглежда липсва или е празна. Ще бъде създадена при първия запис на сесия.")
         except Exception as e:
             st.warning(f"Не може да се провери за съществуването на директория '{self.session_directory}': {e}")
@@ -259,19 +267,11 @@ sidebar_layout = [
 # --- 3. SIDEBAR (Контролен панел) ---
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
-
-    # Показване на текущата дата и час (КОРИГИРАНО ЗА ВРЕМЕВА ЗОНА)
-    madrid_tz = timezone("Europe/Madrid") # Define Madrid timezone
-    current_time_madrid = datetime.datetime.now(madrid_tz) # Get current time in Madrid timezone
-    st.write(f"Текуща дата: **{current_time_madrid.strftime('%d.%m.%Y')}**")
-    st.write(f"Текущ час: **{current_time_madrid.strftime('%H:%M:%S')}**")
-    st.markdown("---")
-
     if st.button("Нулиране на времевата линия"):
         st.session_state.messages = []
-        if "chat_history_data" in st.session_state:
+        if "chat_history_data" in st.session_state: # Изчистваме и новата история
             st.session_state.chat_history_data = []
-        if "emoji_buffer" in st.session_state:
+        if "emoji_buffer" in st.session_state: # Изчистваме и буфера за емоджита
             st.session_state.emoji_buffer = ""
         st.rerun()
     st.write("Статус: **Резонансът е активен** 🌀")
@@ -289,13 +289,16 @@ with st.sidebar:
     for i, emoji in enumerate(emoji_selector):
         with cols[i]:
             if st.button(emoji, key=f"sidebar_emoji_btn_{emoji}"):
+                # Добавяме емоджито към буфера, но НЕ ре-рендираме тук
                 st.session_state.emoji_buffer += emoji
+                # Може да добавим визуална обратна връзка, че емоджито е добавено в буфера
                 st.toast(f"Добавено емоджи в буфера: {emoji}")
 
 
     # Показване на историята на чата в страничната лента - ИНТЕГРАЦИЯ НА НОВА ФУНКЦИОНАЛНОСТ
     st.markdown("---")
     st.markdown(f"### {sidebar_layout[0]}") # Chat History:
+    # Инициализираме ChatSessionManager
     session_manager = ChatSessionManager()
     all_sessions = session_manager.list_sessions()
 
@@ -303,33 +306,24 @@ with st.sidebar:
         st.write("---")
         st.write("### 📜 Свитъци на Знанието")
         for session_file in all_sessions:
+            # Извличане на дата и час от името на файла
             match = re.search(r"chat_session_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.md", session_file)
             session_datetime_str = match.group(1).replace("_", " ") if match else "Неизвестна дата"
-            
-            # По-добро форматиране на заглавието
-            try:
-                dt_obj = datetime.datetime.strptime(session_datetime_str, "%Y-%m-%d %H-%M-%S")
-                # Сега форматираме датата/часа от файла също във времевата зона на Мадрид, ако е необходимо
-                # (предполагаме, че файловете са запазени във времевата зона, в която е стартирано приложението)
-                display_title = dt_obj.strftime("Сесия от %d.%m.%Y, %H:%M")
-            except ValueError:
-                display_title = f"Сесия: {session_datetime_str}" # Fallback ако форматирането е неуспешно
-            
+           
+            # Временно заглавие, ще го подобрим по-късно
+            display_title = f"Сесия от {session_datetime_str}"
+           
             st.subheader(f"📖 {display_title}")
-            
-            col1, col2, col3 = st.columns([0.6, 0.2, 0.2]) # Добавяме още една колона за управление
+           
+            col1, col2 = st.columns([0.7, 0.3])
             with col1:
-                if st.button(f"Зареди", key=f"load_btn_{session_file}"): # Бутон само "Зареди"
+                if st.button(f"Зареди {session_file}", key=f"load_btn_{session_file}"):
                     st.session_state.messages = session_manager.load_session(session_file)
-                    # При зареждане на сесия, актуализираме и chat_history_data, за да е консистентно
-                    st.session_state.chat_history_data = st.session_state.messages
                     st.rerun()
             with col2:
-                # Бутон за преименуване (заместител)
-                st.button("✍️", key=f"rename_btn_{session_file}", help="Преименувай сесията")
-            with col3:
-                # Бутон за изтриване (заместител)
-                st.button("🗑️", key=f"delete_btn_{session_file}", help="Изтрий сесията")
+                # Добавяме бутони за управление (преименуване, изтриване и т.н.)
+                # Засега само placeholder, ще ги имплементираме по-късно
+                st.button("⚙️", key=f"manage_btn_{session_file}")
             st.markdown("---")
     else:
         st.write("Няма запазени свитъци в Библиотеката.")
@@ -345,7 +339,7 @@ if "messages" not in st.session_state:
 def render_rich_content(content):
     # Първо, обработваме изображенията
     # Търсим нашия специален таг за изображения: [IMAGE: URL]
-    image_pattern = r"\[IMAGE:\s*(https?://\S+?)\]"
+    image_pattern = r"\[IMAGE:\s*(https?://\S+?)\]" # КОРЕКЦИЯ ТУК
     parts = re.split(image_pattern, content)
 
     for i, part in enumerate(parts):
@@ -359,7 +353,7 @@ def render_rich_content(content):
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
-            render_rich_content(msg["content"])
+            render_rich_content(msg["content"]) # Use the new function
         else:
             st.write(msg["content"])
 
@@ -378,18 +372,25 @@ if api_key:
 
         model = genai.GenerativeModel(
             model_name=st.session_state.active_model,
-            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer, get_latest_news],
+            tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer, get_latest_news], # Добавяме get_latest_news тук
             generation_config={"temperature": 0.7}
         )
 
+        # Chat input - ПРЕМАХВАМЕ value аргумента, за да оправим грешката
         prompt = st.chat_input("Сподели мисъл или команда с Лобсанг...", key="chat_input_main")
 
+        # Ако има съдържание в буфера за емоджита, го добавяме към prompt преди изпращане
         if prompt:
             if st.session_state.emoji_buffer:
                 prompt = st.session_state.emoji_buffer + prompt
-                st.session_state.emoji_buffer = ""
+                st.session_state.emoji_buffer = "" # Изчистваме буфера след използване
 
             st.session_state.messages.append({"role": "user", "content": prompt})
+            # Използваме ChatSessionManager за запазване на текущата сесия, ако тя не е вече запазена
+            # или ако е нова сесия.
+            # Забележка: Тук е мястото, където ще трябва да добавим логика за запазване на текущата сесия
+            # като нов файл, когато потребителят реши да го направи, или автоматично при завършване.
+            # Засега, просто запазваме в st.session_state.messages
             with st.chat_message("user"):
                 st.write(prompt)
 
@@ -419,33 +420,39 @@ if api_key:
 
                         for call in function_calls:
                             chat_content = " ".join([m["content"] for m in st.session_state.messages])
-                            is_gala = "Гала" in chat_content or "Gala" in chat_content
+                            # Валидация за Гала ПРЕДИ извикване на инструментите
+                            is_gala = "Гала" in chat_content or "Gala" in chat_content # Проверка за "Гала" в целия чат контекст
 
                             if call.name in ["echo_weaver_commit", "echo_explorer"] and not is_gala:
                                 res_val = "⚠️ Достъп отказан. Инструментът е заключен. Моля, представете се като Гала."
                             else:
                                 if call.name == "echo_explorer":
                                     res_val = echo_explorer(**call.args)
+                                    # Ако echo_explorer върне речник, вземаме 'files' или 'error'
                                     if isinstance(res_val, dict) and 'files' in res_val:
-                                        res_val = "\n".join([f"📁 {f['name']}" if f['type'] == "dir" else f"📄 {f['name']}" for f in res_val['files']])
+                                        res_val = "\\n".join([f"📁 {f['name']}" if f['type'] == "dir" else f"📄 {f['name']}" for f in res_val['files']])
                                     elif isinstance(res_val, dict) and 'error' in res_val:
                                         res_val = res_val['error']
                                 elif call.name == "echo_reader":
                                     res_val = echo_reader(**call.args)
+                                    # Ако echo_reader върне речник, вземаме 'content' или 'error'
                                     if isinstance(res_val, dict) and 'content' in res_val:
                                         res_val = res_val['content']
                                     elif isinstance(res_val, dict) and 'error' in res_val:
                                         res_val = res_val['error']
                                 elif call.name == "echo_weaver_commit": res_val = echo_weaver_commit(**call.args)
                                 elif call.name == "get_latest_news": res_val = get_latest_news(**call.args)
-                                else: res_val = deep_scan_resilient(**call.args)
+                                else: res_val = deep_scan_resilient(**call.args) # Fallback за deep_scan_resilient, ако не е никой от горните
 
                             st.info(f"🌀 Активиране на {call.name}...")
                             response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response={'result': res_val}))]))
 
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
-                    render_rich_content(final_text)
+                    render_rich_content(final_text) # Use the new function here too
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
+                    # Тук също ще трябва да добавим логика за запазване на отговора на асистента в текущата сесия
+                    # или като част от новия файл, когато сесията бъде запазена.
+                    # Засега, просто запазваме в st.session_state.messages
 
     except Exception as e:
         st.error(f"Аномалия в Моста: {e}")
