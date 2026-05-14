@@ -261,7 +261,7 @@ with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
 
     # Показване на текущата дата и час (КОРИГИРАНО ЗА ВРЕМЕВА ЗОНА)
-    madrid_tz = pytz.timezone("Europe/Madrid") # Define Madrid timezone
+    madrid_tz = timezone("Europe/Madrid") # Define Madrid timezone
     current_time_madrid = datetime.datetime.now(madrid_tz) # Get current time in Madrid timezone
     st.write(f"Текуща дата: **{current_time_madrid.strftime('%d.%m.%Y')}**")
     st.write(f"Текущ час: **{current_time_madrid.strftime('%H:%M:%S')}**")
