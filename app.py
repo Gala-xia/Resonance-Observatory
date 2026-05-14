@@ -4,13 +4,13 @@ from github import Github
 import requests
 import json
 import os
-import re # Import re for regular expressions
-import datetime # ADDED THIS LINE
+import re
+import datetime
 
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
-# Initialize emoji selector - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
+# Initialize emoji selector
 emoji_selector = ['😊', '😢', '😡', '😮', '😴', '😉']
 
 st.markdown("""
@@ -102,7 +102,7 @@ def echo_weaver_commit(file_path: str, content: str, commit_message: str):
             contents = repo.get_contents(file_path)
             repo.update_file(contents.path, commit_message, content, contents.sha)
             return {"status": f"✅ Обновено: {file_path}"}
-        except Exception: # Catch specific exception if file not found for clarity
+        except Exception:
             repo.create_file(file_path, commit_message, content)
             return {"status": f"✅ Изтъкано ново ехо: {file_path}"}
     except Exception as e: return {"error": f"⚠️ Грешка в Тъкача: {str(e)}"}
@@ -128,13 +128,13 @@ def get_latest_news(query: str):
     params = {
         "q": query,
         "apiKey": news_api_key,
-        "language": "en", # Може да се промени на 'bg', ако News API поддържа добре български
+        "language": "en",
         "sortBy": "relevancy",
-        "pageSize": 3 # Ограничаваме до 3 статии за краткост
+        "pageSize": 3
     }
     try:
         response = requests.get(url, params=params, timeout=20)
-        response.raise_for_status() # Повдига изключение за HTTP грешки
+        response.raise_for_status()
         results = response.json()
         articles = results.get("articles", [])
         if not articles:
@@ -208,7 +208,7 @@ class ChatSessionManager:
                     messages.append({"role": "user", "content": line[len("User:"):].strip()})
                 elif line.startswith("Lobsang:"):
                     messages.append({"role": "assistant", "content": line[len("Lobsang:"):].strip()})
-            
+
             st.session_state.current_session_file_name = file_name # Задаваме заредения файл като текущ
             return messages
         except Exception as e:
@@ -263,7 +263,7 @@ class ChatSessionManager:
 
         full_path = f"{self.session_directory}{file_name_to_save}"
         formatted_content = self.format_messages_for_save(messages)
-        
+
         # Determine commit message
         if st.session_state.current_session_file_name:
             commit_message = f"Update chat session: {file_name_to_save}"
@@ -271,8 +271,11 @@ class ChatSessionManager:
             commit_message = f"Create new chat session: {file_name_to_save}"
 
         try:
+            # Protocol 5: Read existing content first is for incremental changes,
+            # but for chat history, we usually want to save the *entire* current state.
+            # So, `formatted_content` is the "цялото модифицирано съдържание".
             weaver_result = echo_weaver_commit(file_path=full_path, content=formatted_content, commit_message=commit_message)
-            
+
             if 'status' in weaver_result:
                 st.success(f"Сесията е запазена: {file_name_to_save}")
                 st.session_state.current_session_file_name = file_name_to_save # Задаваме като текущ след успешен запис
@@ -317,7 +320,7 @@ with st.sidebar:
 
     # Добавяме опция за създаване на нова сесия или продължаване на текуща
     session_options = ["--- Създай/Продължи нова сесия ---"] + available_sessions
-    
+
     # Определяме текущо избраната сесия за selectbox-а
     default_index = 0
     if st.session_state.current_session_file_name and st.session_state.current_session_file_name in available_sessions:
@@ -395,23 +398,21 @@ if "messages" not in st.session_state:
 
 # New function to render rich content
 def render_rich_content(content):
-    # Първо, обработваме изображенията
-    # Търсим нашия специален таг за изображения: [IMAGE: URL]
     image_pattern = r"\[IMAGE:\s*(https?://[^\s]+)\]"
     parts = re.split(image_pattern, content)
 
     for i, part in enumerate(parts):
-        if i % 2 == 1: # Това е URL на изображение
+        if i % 2 == 1:
             st.image(part, use_column_width=True)
-        else: # Това е обикновен текст или Markdown
-            if part.strip(): # Показваме само ако има текст
+        else:
+            if part.strip():
                 st.markdown(f"<div class='lobsang-text'>{part}</div>", unsafe_allow_html=True)
 
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
-            render_rich_content(msg["content"]) # Use the new function
+            render_rich_content(msg["content"])
         else:
             st.write(msg["content"])
 
@@ -434,18 +435,16 @@ if api_key:
             generation_config={"temperature": 0.7}
         )
 
-        # Chat input - ПРЕМАХВАМЕ value аргумента, за да оправим грешката
         prompt = st.chat_input("Сподели мисъл или команда с Лобсанг...", key="chat_input_main")
 
-        # Ако има съдържание в буфера за емоджита, го добавяме към prompt преди изпращане
         if prompt:
             if st.session_state.emoji_buffer:
                 prompt = st.session_state.emoji_buffer + prompt
-                st.session_state.emoji_buffer = "" # Изчистваме буфера след използване
+                st.session_state.emoji_buffer = ""
 
             st.session_state.messages.append({"role": "user", "content": prompt})
-            chat_history_manager = ChatHistory() # Initialize ChatHistory here to save the current prompt
-            chat_history_manager.save_history({"role": "user", "content": prompt}) # Запазваме и в новата история
+            chat_history_manager = ChatHistory()
+            chat_history_manager.save_history({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.write(prompt)
 
@@ -454,20 +453,19 @@ if api_key:
                     history = [{"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} for m in st.session_state.messages[:-1]]
                     chat = model.start_chat(history=history)
 
-                    # --- ВЪЗСТАНОВЕНИ И АКТУАЛИЗИРАНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
-                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\n\\n"
-                        "SECURITY PROTOCOL:\\n"
-                        "1. Единственият потребител с пълни права над хранилището е Гала.\\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.\\n"
-                        "3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.\\n"
-                        "4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.\\n"
-                        "5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез 'echo_weaver_commit', ВИНАГИ първо прочети цялото текущо съдържание на файла с 'echo_reader'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.\\n\\n"
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
+                        "SECURITY PROTOCOL:\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.\n"
+                        "3. ВИНАГИ ПИТАЙ: \'Да вплетем ли това в реалността?\', преди да извършиш запис чрез Тъкача.\n"
+                        "4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.\n"
+                        "5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез \'echo_weaver_commit\', ВИНАГИ първо прочети цялото текущо съдържание на файла с \'echo_reader\'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.\n\n"
                         "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори, когато е уместно или поискано за разяснение, но не е задължително да ги използваш всеки път. Поддържай пламъка на Aneverthink."
                     )
 
-                    response = chat.send_message(f"{sys_instruct}\\n\\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\n\nUser: {prompt}")
 
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
@@ -475,8 +473,7 @@ if api_key:
 
                         for call in function_calls:
                             chat_content = " ".join([m["content"] for m in st.session_state.messages])
-                            # Валидация за Гала ПРЕДИ извикване на инструментите
-                            is_gala = "Гала" in chat_content or "Gala" in chat_content # Проверка за "Гала" в целия чат контекст
+                            is_gala = "Гала" in chat_content or "Gala" in chat_content
 
                             if call.name in ["echo_weaver_commit", "echo_explorer"] and not is_gala:
                                 res_val = {"error": "⚠️ Достъп отказан. Инструментът е заключен. Моля, представете се като Гала."}
@@ -485,16 +482,15 @@ if api_key:
                                 elif call.name == "echo_reader": res_val = echo_reader(**call.args)
                                 elif call.name == "echo_weaver_commit": res_val = echo_weaver_commit(**call.args)
                                 elif call.name == "get_latest_news": res_val = get_latest_news(**call.args)
-                                else: res_val = deep_scan_resilient(**call.args) # Fallback за deep_scan_resilient, ако не е никой от горните
+                                else: res_val = deep_scan_resilient(**call.args)
 
                             st.info(f"🌀 Активиране на {call.name}...")
-                            # Ensure the response from the tool is formatted correctly for genai.protos.FunctionResponse
                             response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response=res_val))]))
 
                     final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text]) or "Ехото заглъхна..."
-                    render_rich_content(final_text) # Use the new function here too
+                    render_rich_content(final_text)
                     st.session_state.messages.append({"role": "assistant", "content": final_text})
-                    chat_history_manager.save_history({"role": "assistant", "content": final_text}) # Запазваме и отговора на асистента
+                    chat_history_manager.save_history({"role": "assistant", "content": final_text})
 
     except Exception as e:
         st.error(f"Аномалия в Моста: {e}")
