@@ -5,6 +5,7 @@ import requests
 import json
 import os
 import re # Import re for regular expressions
+import datetime # ADDED THIS LINE
 
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
@@ -166,6 +167,93 @@ class ChatHistory:
     def save_history(self, message): # КОРЕКЦИЯ ТУК: Премахната е излишната ''
         self.history.append(message)
         st.session_state.chat_history_data = self.history
+
+class ChatSessionManager:
+    def __init__(self):
+        self.session_directory = "chat_sessions/"
+
+    def list_sessions(self):
+        """
+        Използва echo_explorer, за да изброи всички файлове в директорията със сесии.
+        Връща списък с имената на файловете.
+        """
+        try:
+            # Първо, опитваме се да създадем директорията, ако не съществува
+            # (тази логика ще бъде вградена в app.py, когато извикаме мениджъра за първи път,
+            # но echo_explorer ще ни каже дали съществува)
+
+            # echo_explorer връща речник, където 'files' е списък с речници,
+            # всеки с ключ 'name' за името на файла.
+            explorer_result = default_api.echo_explorer(path=self.session_directory)
+
+            # Проверяваме дали резултатът съдържа 'files' и дали не е празен
+            if explorer_result and 'files' in explorer_result:
+                session_files = [
+                    f['name'] for f in explorer_result['files'] 
+                    if f['name'].endswith(('.md', '.txt'))
+                ]
+                return sorted(session_files, reverse=True) # Сортираме по дата/име
+            else:
+                return []
+        except Exception as e:
+            st.error(f"Грешка при изброяване на чат сесии: {e}")
+            return []
+
+    def load_session(self, file_name):
+        """
+        Използва echo_reader, за да прочете съдържанието на дадена сесия
+        и го преобразува във формат, подходящ за st.session_state.messages.
+        """
+        full_path = f"{self.session_directory}{file_name}"
+        try:
+            reader_result = default_api.echo_reader(file_path=full_path)
+            content = reader_result.get('content', '')
+
+            messages = []
+            # Разделяме съдържанието на редове и парсваме всяко съобщение
+            for line in content.strip().split('\n'):
+                if line.startswith("User:"):
+                    messages.append({"role": "user", "content": line[len("User:"):].strip()})
+                elif line.startswith("Lobsang:"):
+                    messages.append({"role": "assistant", "content": line[len("Lobsang:"):].strip()})
+            return messages
+        except Exception as e:
+            st.error(f"Грешка при зареждане на сесия '{file_name}': {e}")
+            return []
+
+    def format_messages_for_save(self, messages):
+        """
+        Форматира списък със съобщения във текстов формат за запис.
+        """
+        formatted_content = []
+        for msg in messages:
+            if msg["role"] == "user":
+                formatted_content.append(f"User: {msg['content']}")
+            elif msg["role"] == "assistant":
+                formatted_content.append(f"Lobsang: {msg['content']}")
+        return "\n".join(formatted_content)
+
+    def create_new_session_name(self):
+        """
+        Генерира уникално име за нов файл със сесия на базата на текущата дата и час.
+        """
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        return f"chat_session_{timestamp}.md"
+
+    def ensure_session_directory_exists(self):
+        """
+        Проверява дали директорията за сесии съществува. Ако не, предлага да я създаде.
+        Това е помощна функция, която ще се извика преди първото използване на manager-а.
+        """
+        try:
+            explorer_result = default_api.echo_explorer(path=self.session_directory)
+            if not explorer_result or 'files' not in explorer_result:
+                # Директорията не съществува или е празна.
+                # Ще я създадем при първия опит за запис на сесия.
+                # Засега просто уведомяваме, че може да не съществува.
+                st.info(f"Директорията '{self.session_directory}' изглежда липсва или е празна. Ще бъде създадена при първия запис на сесия.")
+        except Exception as e:
+            st.warning(f"Не може да се провери за съществуването на директория '{self.session_directory}': {e}")
 
 # Improve futuristic design with better layout - НОВА ФУНКЦИОНАЛНОСТ ОТ COPILOT
 # Sidebar organization to show chat history
