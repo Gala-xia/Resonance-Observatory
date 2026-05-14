@@ -294,6 +294,7 @@ sidebar_layout = [
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
     if st.button("Нулиране на времевата линия"):\n        st.session_state.messages = []\n        if "chat_history_data" in st.session_state: # Изчистваме и новата история\n            st.session_state.chat_history_data = []\n        if "emoji_buffer" in st.session_state: # Изчистваме и буфера за емоджита\n            st.session_state.emoji_buffer = ""\n        st.rerun()\n    st.write("Статус: **Резонансът е активен** 🌀")
+    
     st.write("Гласът на Библиотеката: **Лобсанг Лъд**")
 
     # Бутони за емотикони в страничната лента - ПРЕМЕСТЕНИ ЗА ПОСТОЯНЕН ДОСТЪП
