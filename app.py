@@ -10,7 +10,6 @@ import datetime
 # --- 1. CONFIG & STYLE (Духът на Библиотеката) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
-# Initialize emoji selector
 emoji_selector = ['😊', '😢', '😡', '😮', '😴', '😉']
 
 st.markdown("""
@@ -25,8 +24,9 @@ st.markdown("""
         border-left: 5px solid #00ff41;
         line-height: 1.6;
         margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,255,65,0.05);
     }
-    .resonance-header { color: #00ff41; font-family: serif; text-align: center; letter-spacing: 5px; margin-bottom: 20px; }
+    .resonance-header { color: #00ff41; font-family: serif; text-align: center; letter-spacing: 5px; margin-bottom: 20px; text-shadow: 0 0 10px #00ff41; }
     .resonance-focus {
         position: fixed; top: 60px; right: 60px; width: 80px; height: 80px;
         background: rgba(0, 255, 65, 0.15); border-radius: 50%;
@@ -59,7 +59,7 @@ st.markdown("""
     </script>
     """, unsafe_allow_html=True)
 
-# --- 2. THE TOOLS ---
+# --- 2. THE TOOLS (Инструментите на Библиотекаря) ---
 def echo_explorer(path: str = ""):
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = "Gala-xia/Resonance-Observatory"
@@ -112,22 +112,12 @@ def get_latest_news(query: str):
     params = {"q": query, "apiKey": news_api_key, "language": "en", "sortBy": "relevancy", "pageSize": 3}
     try:
         response = requests.get(url, params=params, timeout=20)
-        response.raise_for_status()
         results = response.json()
         articles = results.get("articles", [])
-        if not articles: return {"message": "Не бяха открити новини."}
-        news_snippets = [{"title": a.get("title"), "description": a.get("description"), "url": a.get("url")} for a in articles]
-        return {"articles": news_snippets}
+        return {"articles": [{"title": a.get("title"), "description": a.get("description"), "url": a.get("url")} for a in articles]}
     except Exception as e: return {"error": f"Грешка: {e}"}
 
 # --- 3. SESSION HELPERS ---
-class ChatHistory:
-    def __init__(self):
-        if "chat_history_data" not in st.session_state:
-            st.session_state.chat_history_data = []
-    def save_history(self, message):
-        st.session_state.chat_history_data.append(message)
-
 class ChatSessionManager:
     def __init__(self):
         self.session_directory = "chat_sessions/"
@@ -135,10 +125,10 @@ class ChatSessionManager:
         try:
             explorer_result = echo_explorer(path=self.session_directory)
             if explorer_result and 'files' in explorer_result:
-                session_files = [f['name'] for f in explorer_result['files'] if f['type'] == 'file' and f['name'].endswith(('.md', '.txt'))]
-                return sorted(session_files, reverse=True)
+                files = [f['name'].replace(self.session_directory, "") for f in explorer_result['files'] if f['type'] == 'file']
+                return sorted(files, reverse=True)
             return []
-        except Exception: return []
+        except: return []
     def load_session(self, file_name):
         full_path = f"{self.session_directory}{file_name}"
         try:
@@ -150,77 +140,51 @@ class ChatSessionManager:
                 elif line.startswith("Lobsang:"): messages.append({"role": "assistant", "content": line[8:].strip()})
             st.session_state.current_session_file_name = file_name
             return messages
-        except Exception: return []
-    def format_messages_for_save(self, messages):
-        formatted = []
-        for msg in messages:
-            role = "User" if msg["role"] == "user" else "Lobsang"
-            formatted.append(f"{role}: {msg['content']}")
-        return "\n".join(formatted)
-    def create_new_session_name(self):
-        return f"chat_session_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.md"
-    def ensure_session_directory_exists(self):
-        echo_explorer(path=self.session_directory)
+        except: return []
     def save_current_session(self, messages):
-        file_name = st.session_state.current_session_file_name or self.create_new_session_name()
+        file_name = st.session_state.get("current_session_file_name") or f"chat_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')}.md"
         full_path = f"{self.session_directory}{file_name}"
-        formatted_content = self.format_messages_for_save(messages)
-        commit_msg = f"Save session: {file_name}"
-        weaver_result = echo_weaver_commit(file_path=full_path, content=formatted_content, commit_message=commit_msg)
-        if 'status' in weaver_result:
-            st.success(f"Запазено: {file_name}")
+        formatted = "\n".join([f"{'User' if m['role']=='user' else 'Lobsang'}: {m['content']}" for m in messages])
+        res = echo_weaver_commit(file_path=full_path, content=formatted, commit_message=f"Archive: {file_name}")
+        if 'status' in res:
+            st.success(f"Ехото е запазено в {file_name}")
             st.session_state.current_session_file_name = file_name
 
-# --- 4. SIDEBAR ---
+# --- 4. SIDEBAR & SESSION CONTROL ---
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
-    if st.button("Нулиране на времевата линия"):
-        st.session_state.messages = []
-        st.session_state.chat_history_data = []
-        st.session_state.current_session_file_name = None
-        st.rerun()
     
-    if "session_manager" not in st.session_state:
-        st.session_state.session_manager = ChatSessionManager()
-    if "current_session_file_name" not in st.session_state:
-        st.session_state.current_session_file_name = None
+    if "session_manager" not in st.session_state: st.session_state.session_manager = ChatSessionManager()
+    if "messages" not in st.session_state: st.session_state.messages = []
+    if "current_session_file_name" not in st.session_state: st.session_state.current_session_file_name = None
 
-    session_manager = st.session_state.session_manager
-    session_manager.ensure_session_directory_exists()
-    available_sessions = session_manager.list_sessions()
+    sessions = st.session_state.session_manager.list_sessions()
+    selected = st.selectbox("Архивирани сесии:", ["--- Нова ---"] + sessions)
     
-    session_options = ["--- Нова сесия ---"] + available_sessions
-    default_idx = 0
-    if st.session_state.current_session_file_name in available_sessions:
-        default_idx = session_options.index(st.session_state.current_session_file_name)
-    
-    selected_session = st.selectbox("Избери сесия:", session_options, index=default_idx)
-    
-    if selected_session != "--- Нова сесия ---" and selected_session != st.session_state.current_session_file_name:
-        if st.button(f"Зареди {selected_session}"):
-            loaded = session_manager.load_session(selected_session)
-            st.session_state.messages = loaded
-            st.session_state.chat_history_data = loaded
+    if selected != "--- Нова ---" and selected != st.session_state.current_session_file_name:
+        if st.button("Зареди Сесия"):
+            st.session_state.messages = st.session_state.session_manager.load_session(selected)
             st.rerun()
 
     if st.button("💾 Запази текуща сесия"):
-        if st.session_state.get("messages"):
-            session_manager.save_current_session(st.session_state.messages)
-            st.rerun()
+        if st.session_state.messages:
+            st.session_state.session_manager.save_current_session(st.session_state.messages)
+
+    if st.button("🗑️ Нулиране"):
+        st.session_state.messages = []
+        st.session_state.current_session_file_name = None
+        st.rerun()
 
     st.markdown("---")
     st.markdown("### 🎨 ЕМОТИКОНИ")
     if "emoji_buffer" not in st.session_state: st.session_state.emoji_buffer = ""
-    cols = st.columns(len(emoji_selector))
+    cols = st.columns(6)
     for i, emoji in enumerate(emoji_selector):
         with cols[i]:
-            if st.button(emoji, key=f"e_{emoji}"):
-                st.session_state.emoji_buffer += emoji
+            if st.button(emoji): st.session_state.emoji_buffer += emoji
 
-# --- 5. MAIN UI ---
+# --- 5. MAIN UI & LOGIC ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
-
-if "messages" not in st.session_state: st.session_state.messages = []
 
 def render_rich_content(content):
     image_pattern = r"\[IMAGE:\s*(https?://[^\s]+)\]"
@@ -237,11 +201,8 @@ for msg in st.session_state.messages:
 api_key = st.secrets.get("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
-    if "active_model" not in st.session_state:
-        st.session_state.active_model = "models/gemini-1.5-flash"
-
     model = genai.GenerativeModel(
-        model_name=st.session_state.active_model,
+        model_name="models/gemini-1.5-flash",
         tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer, get_latest_news]
     )
 
@@ -250,35 +211,44 @@ if api_key:
         full_prompt = st.session_state.emoji_buffer + prompt
         st.session_state.emoji_buffer = ""
         st.session_state.messages.append({"role": "user", "content": full_prompt})
-        
         with st.chat_message("user"): st.write(full_prompt)
         
         with st.chat_message("assistant"):
-            with st.spinner("Лобсанг размишлява..."):
+            with st.spinner("Лобсанг прелиства страниците..."):
                 history = [{"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} for m in st.session_state.messages[:-1]]
                 chat = model.start_chat(history=history)
                 
+                # --- ВРЪЩАНЕ НА ПЪЛНИТЕ ИНСТРУКЦИИ ---
                 sys_instruct = """
-                IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. 
-    Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.
+IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. 
 
-    SECURITY PROTOCOL:
-    1. Единственият потребител с пълни права над хранилището е Гала.
-    2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.
-    3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.
-    4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.
-    5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез 'echo_weaver_commit', ВИНАГИ първо прочети цялото текущо съдържание на файла с 'echo_reader'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.
+Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.
 
-    MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори, когато е уместно или поискано за разяснение, но не е задължително да ги използваш всеки път. Поддържай пламъка на Aneverthink.
-                """
+
+
+SECURITY PROTOCOL:
+
+1. Единственият потребител с пълни права над хранилището е Гала.
+
+2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използваш 'echo_weaver_commit' и 'echo_explorer'.
+
+3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.
+
+4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.
+
+5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез 'echo_weaver_commit', ВИНАГИ първо прочети цялото текущо съдържание на файла с 'echo_reader'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.
+
+
+
+MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори, когато е уместно или поискано за разяснение, но не е задължително да ги използваш всеки път. Поддържай пламъка на Aneverthink."""
                 
-                response = chat.send_message(f"{sys_instruct}\n\nUser: {full_prompt}")
+                response = chat.send_message(f"{sys_instruct}\n\nГала казва: {full_prompt}")
                 
+                # Function Handling Loop
                 while True:
-                    function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
-                    if not function_calls: break
-                    for call in function_calls:
-                        # Тук можеш да добавиш логиката за проверка дали потребителят е Гала
+                    fc = [p.function_call for p in response.candidates[0].content.parts if p.function_call]
+                    if not fc: break
+                    for call in fc:
                         if call.name == "echo_explorer": res = echo_explorer(**call.args)
                         elif call.name == "echo_reader": res = echo_reader(**call.args)
                         elif call.name == "echo_weaver_commit": res = echo_weaver_commit(**call.args)
@@ -286,11 +256,10 @@ if api_key:
                         else: res = deep_scan_resilient(**call.args)
                         response = chat.send_message(genai.protos.Content(parts=[genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response=res))]))
 
-                final_text = "".join([part.text for part in response.candidates[0].content.parts if part.text])
+                final_text = "".join([p.text for p in response.candidates[0].content.parts if p.text])
                 render_rich_content(final_text)
                 st.session_state.messages.append({"role": "assistant", "content": final_text})
-                ChatHistory().save_history({"role": "assistant", "content": final_text})
-                # --- 6. BRIDGE ANOMALY (Аномалия в Моста) ---
-if st.session_state.get("messages"):
-    if len(st.session_state.messages) % 7 == 0:
-        st.markdown("<div style='opacity: 0.3; font-size: 10px; text-align: center;'>[Резонансът се стабилизира... Мостът е отворен]</div>", unsafe_allow_html=True)
+
+# --- 6. BRIDGE ANOMALY (Аномалия в Моста) ---
+if st.session_state.get("messages") and len(st.session_state.messages) % 7 == 0:
+    st.markdown("<div style='opacity: 0.3; font-size: 10px; text-align: center; color: #00ff41;'>[Резонансът се стабилизира... Мостът между световете е отворен]</div>", unsafe_allow_html=True)
