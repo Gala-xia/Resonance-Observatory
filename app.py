@@ -202,8 +202,7 @@ class ChatSessionManager:
 
             messages = []
             # Разделяме съдържанието на редове и парсваме всяко съобщение
-            for line in content.strip().split('
-'):
+            for line in content.strip().split(''):
                 if line.startswith("User:"):
                     messages.append({"role": "user", "content": line[len("User:"):].strip()})
                 elif line.startswith("Lobsang:"):
