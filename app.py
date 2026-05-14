@@ -59,8 +59,8 @@ st.markdown("""
     <script>
     if (!window.miuMiuLive) {
         window.miuMiuLive = true;
-        const miu = document.getElementById(\'miu-miu-container\');
-        const emojis = [\'🐾\', \'🐱\', \'🐈\', \'✨\', \'🌀\'];
+        const miu = document.getElementById('miu-miu-container');
+        const emojis = ['🐾', '🐱', '🐈', '✨', '🌀'];
         setInterval(() => {
             miu.innerText = emojis[Math.floor(Math.random() * emojis.length)];
         }, 5000);
@@ -178,10 +178,10 @@ class ChatSessionManager:
         """
         try:
             explorer_result = echo_explorer(path=self.session_directory)
-            if explorer_result and \'files\'in explorer_result:
+            if explorer_result and 'files'in explorer_result:
                 session_files = [
-                    f[\'name\'] for f in explorer_result[\'files\']
-                    if f[\'type\'] == \'file\' and f[\'name\'].endswith((\'.md\', \'.txt\'))
+                    f['name'] for f in explorer_result['files']
+                    if f['type'] == 'file' and f['name'].endswith(('.md', '.txt'))
                 ]
                 return sorted(session_files, reverse=True)
             else:
@@ -198,10 +198,10 @@ class ChatSessionManager:
         full_path = f"{self.session_directory}{file_name}"
         try:
             reader_result = echo_reader(file_path=full_path)
-            content = reader_result.get(\'content\', \'\')
+            content = reader_result.get('content', '')
 
             messages = []
-            for line in content.strip().split(\'\\n\'):
+            for line in content.strip().split('\\n'):
                 if line.startswith("User:"):
                     messages.append({"role": "user", "content": line[len("User:"):].strip()})
                 elif line.startswith("Lobsang:"):
@@ -210,7 +210,7 @@ class ChatSessionManager:
             st.session_state.current_session_file_name = file_name # Задаваме заредения файл като текущ
             return messages
         except Exception as e:
-            st.error(f"Грешка при зареждане на сесия \'{file_name}\': {e}")
+            st.error(f"Грешка при зареждане на сесия '{file_name}': {e}")
             return []
 
     def format_messages_for_save(self, messages):
@@ -220,9 +220,9 @@ class ChatSessionManager:
         formatted_content = []
         for msg in messages:
             if msg["role"] == "user":
-                formatted_content.append(f"User: {msg[\'content\']}")
+                formatted_content.append(f"User: {msg['content']}")
             elif msg["role"] == "assistant":
-                formatted_content.append(f"Lobsang: {msg[\'content\']}")
+                formatted_content.append(f"Lobsang: {msg['content']}")
         return "\\n".join(formatted_content)
 
     def create_new_session_name(self):
@@ -239,15 +239,15 @@ class ChatSessionManager:
         """
         try:
             explorer_result = echo_explorer(path=self.session_directory)
-            if explorer_result and \'files\' in explorer_result:
+            if explorer_result and 'files' in explorer_result:
                 pass # Директорията съществува и съдържа файлове
-            elif explorer_result and \'error\' in explorer_result and "Not Found" in explorer_result[\'error\']:
+            elif explorer_result and 'error' in explorer_result and "Not Found" in explorer_result['error']:
                 # Директорията не съществува, ще бъде създадена при първи запис на файл в нея.
-                st.info(f"Директорията \'{self.session_directory}\' не е открита. Тя ще бъде създадена автоматично при първия запис на сесия.")
+                st.info(f"Директорията '{self.session_directory}' не е открита. Тя ще бъде създадена автоматично при първия запис на сесия.")
             else:
-                st.warning(f"Не може да се провери за съществуването на директория \'{self.session_directory}\': {explorer_result.get(\'error\', \'Неизвестна грешка\')}")
+                st.warning(f"Не може да се провери за съществуването на директория '{self.session_directory}': {explorer_result.get('error', 'Неизвестна грешка')}")
         except Exception as e:
-            st.warning(f"Неочаквана грешка при проверка на директория \'{self.session_directory}\': {e}")
+            st.warning(f"Неочаквана грешка при проверка на директория '{self.session_directory}': {e}")
 
     def save_current_session(self, messages):
         """
@@ -271,11 +271,11 @@ class ChatSessionManager:
         try:
             weaver_result = echo_weaver_commit(file_path=full_path, content=formatted_content, commit_message=commit_message)
 
-            if \'status\' in weaver_result:
+            if 'status' in weaver_result:
                 st.success(f"Сесията е запазена: {file_name_to_save}")
                 st.session_state.current_session_file_name = file_name_to_save # Задаваме като текущ след успешен запис
             else:
-                st.error(f"Грешка при запис на сесия: {weaver_result.get(\'error\', \'Неизвестна грешка\')}")
+                st.error(f"Грешка при запис на сесия: {weaver_result.get('error', 'Неизвестна грешка')}")
         except Exception as e:
             st.error(f"Неочаквана грешка при запис на сесия: {e}")
 
@@ -283,9 +283,9 @@ class ChatSessionManager:
 # Improve futuristic design with better layout
 sidebar_layout = [
     "Chat History:",
-    \'Date\',
-    \'Time\',
-    \'Message\'
+    'Date',
+    'Time',
+    'Message'
 ]
 
 # --- 3. SIDEBAR (Контролен панел) ---
@@ -379,14 +379,14 @@ with st.sidebar:
     st.markdown(f"### {sidebar_layout[0]}")
     if st.session_state.chat_history_data:
         for i, msg in enumerate(st.session_state.chat_history_data):
-            display_content = msg[\'content\'] if len(msg[\'content\']) <= 30 else msg[\'content\'][:27] + \'...\'
-            st.markdown(f"**{i+1}.** {msg[\'role\'].capitalize()}: {display_content}")
+            display_content = msg['content'] if len(msg['content']) <= 30 else msg['content'][:27] + '...'
+            st.markdown(f"**{i+1}.** {msg['role'].capitalize()}: {display_content}")
     else:
         st.write("Няма активна история на чата.")
 
 
 # --- 4. ENGINE & UI (Сърцето на Системата) ---
-st.markdown("<h1 class=\'resonance-header\'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -406,7 +406,7 @@ def render_rich_content(content):
             st.image(part, use_column_width=True)
         else:
             if part.strip():
-                st.markdown(f"<div class=\'lobsang-text\'>{part}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='lobsang-text'>{part}</div>", unsafe_allow_html=True)
 
 
 for msg in st.session_state.messages:
@@ -424,7 +424,7 @@ if api_key:
 
         if "active_model" not in st.session_state:
             try:
-                available = [m.name for m in genai.list_models() if \'generateContent\' in m.supported_generation_methods]
+                available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 st.session_model = next((m for m in available if "flash" in m), available[0])
             except:
                 st.session_state.active_model = "models/gemini-1.5-flash"
@@ -472,7 +472,7 @@ if api_key:
                         if not function_calls: break
 
                         for call in function_calls:
-                            chat_content = " ".join([m[\'content\'] for m in st.session_state.messages])
+                            chat_content = " ".join([m['content'] for m in st.session_state.messages])
                             is_gala = "Гала" in chat_content or "Gala" in chat_content
 
                             if call.name in ["echo_weaver_commit", "echo_explorer"] and not is_gala:
