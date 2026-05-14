@@ -100,20 +100,23 @@ if "sm" not in st.session_state: st.session_state.sm = ChatSessionManager()
 
 with st.sidebar:
     st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
-    sessions = st.session_state.sm.list_sessions()
-    sel = st.selectbox("Архивирани сесии:", ["--- Текуща ---"] + sessions)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if sel != "--- Текуща ---" and st.button("📂 Зареди"):
-            st.session_state.messages = st.session_state.sm.load_session(sel)
-            st.session_state.current_session_file_name = sel
-            st.rerun()
-    with col2:
-        if st.button("💾 Архивирай"):
-            if st.session_state.messages:
-                st.session_state.sm.save(st.session_state.messages)
-                st.success("Записано.")
+    try:
+        sessions = st.session_state.sm.list_sessions()
+        sel = st.selectbox("Архивирани сесии:", ["--- Текуща ---"] + sessions)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if sel != "--- Текуща ---" and st.button("📂 Зареди"):
+                st.session_state.messages = st.session_state.sm.load_session(sel)
+                st.session_state.current_session_file_name = sel
+                st.rerun()
+        with col2:
+            if st.button("💾 Архивирай"):
+                if st.session_state.messages:
+                    st.session_state.sm.save(st.session_state.messages)
+                    st.success("Записано.")
+    except:
+        st.warning("Връзката с хранилището е слаба.")
 
     if st.button("🗑️ Нова страница"):
         st.session_state.messages = []
@@ -123,10 +126,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎨 ЕМОТИКОНИ")
     cols = st.columns(3)
-    emotes = ['😊', '😢', '😡', '😮', '😴', '😉', '🐾', '🌀', '✨']
+    emotes = ['😊', '🐾', '🌀', '📚', '💾', '✨', '🌑', '🕯️', '🌌']
     for i, em in enumerate(emotes):
         with cols[i % 3]:
-            if st.button(em, key=f"sb_em_{i}"):
+            if st.button(em, key=f"btn_em_{i}"):
                 st.session_state.emoji_buffer += em
 
 # --- 4. ENGINE (Лобсанг Лъд) ---
@@ -153,9 +156,9 @@ if api_key:
     MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори.
     """
 
-    # ПРОМЯНА: Използваме -latest за избягване на 404
+    # КРИТИЧНА КОРЕКЦИЯ: Използваме абсолютното име за v1beta
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash-latest",
+        model_name="models/gemini-1.5-flash",
         tools=[echo_explorer, echo_reader, echo_weaver_commit],
         system_instruction=lobsang_instructions
     )
@@ -178,22 +181,25 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
 
                 response = model.generate_content(history)
                 
+                # Loop за инструменти
                 while response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
                     fc = response.candidates[0].content.parts[0].function_call
                     history.append(response.candidates[0].content)
                     
                     if fc.name == "echo_explorer": res = echo_explorer(**fc.args)
                     elif fc.name == "echo_reader": res = echo_reader(**fc.args)
-                    else: res = echo_weaver_commit(**fc.args)
+                    elif fc.name == "echo_weaver_commit": res = echo_weaver_commit(**fc.args)
+                    else: res = {"error": "Unknown tool"}
                     
                     history.append(genai.protos.Content(parts=[
                         genai.protos.Part(function_response=genai.protos.FunctionResponse(name=fc.name, response=res))
                     ]))
                     response = model.generate_content(history)
 
-                final_text = response.text
-                st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
-                st.session_state.messages.append({"role": "assistant", "content": final_text})
-                st.rerun()
+                if response.text:
+                    final_text = response.text
+                    st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
+                    st.session_state.messages.append({"role": "assistant", "content": final_text})
+                    st.rerun()
             except Exception as e:
                 st.error(f"Аномалия в резонанса: {str(e)}")
