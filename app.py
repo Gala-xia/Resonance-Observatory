@@ -77,7 +77,7 @@ def echo_explorer(path: str = ""):
         g = Github(token)
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(path)
-        return {"files": [{"name": c.path, "type": c.type} for c in contents}]}
+        return {"files": [{"name": c.path, "type": c.type} for c in contents]}
     except Exception as e: return {"error": f"⚠️ Грешка при изследване: {str(e)}"}
 
 
