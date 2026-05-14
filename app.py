@@ -338,6 +338,9 @@ st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_all
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "chat_history_data" not in st.session_state:
+    st.session_state.chat_history_data = []
+
 # New function to render rich content
 def render_rich_content(content):
     # Първо, обработваме изображенията
@@ -356,7 +359,7 @@ def render_rich_content(content):
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
-            render_rich_content(msg["content"]) # Use the new function
+            render_rich_content(msg["content"])
         else:
             st.write(msg["content"])
 
@@ -405,7 +408,7 @@ if api_key:
                         "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\n\n"
                         "SECURITY PROTOCOL:\n"
                         "1. Единственият потребител с пълни права над хранилището е Гала.\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате \'echo_weaver_commit\' и \'echo_explorer\'.\n"
                         "3. ВИНАГИ ПИТАЙ: \'Да вплетем ли това в реалността?\', преди да извършиш запис чрез Тъкача.\n"
                         "4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.\n"
                         "5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез \'echo_weaver_commit\', ВИНАГИ първо прочети цялото текущо съдържание на файла с \'echo_reader\'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.\n\n"
