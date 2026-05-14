@@ -2,16 +2,15 @@ import streamlit as st
 import google.generativeai as genai
 from github import Github
 import requests
-import json
 import os
 import re
+import json
 import datetime
 
-# --- 1. CONFIG & STYLE ---
+# --- 1. CONFIG & STYLE (Душата на Обсерваторията) ---
 st.set_page_config(page_title="Lobsang Archives: Aneverthink Pro", page_icon="🐾", layout="wide")
 
-emoji_selector = ['😊', '😢', '😡', '😮', '😴', '😉']
-
+# Цветове и анимации
 st.markdown("""
     <style>
     .stApp { background-color: #020806 !important; color: #d1d1d1 !important; }
@@ -19,205 +18,163 @@ st.markdown("""
         font-family: 'Courier New', Courier, monospace;
         color: #f4e4bc;
         background-color: rgba(0, 255, 65, 0.07);
-        padding: 20px;
+        padding: 25px;
         border-radius: 15px;
         border-left: 5px solid #00ff41;
-        line-height: 1.6;
+        line-height: 1.7;
         margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,255,65,0.05);
+        box-shadow: 0 4px 15px rgba(0,255,65,0.1);
     }
-    .resonance-header { color: #00ff41; font-family: serif; text-align: center; letter-spacing: 5px; margin-bottom: 20px; text-shadow: 0 0 10px #00ff41; }
+    .resonance-header { 
+        color: #00ff41; 
+        font-family: serif; 
+        text-align: center; 
+        letter-spacing: 7px; 
+        text-shadow: 0 0 15px #00ff41;
+        margin-bottom: 30px;
+    }
     #miu-miu-container {
-        position: fixed; bottom: 90px; right: 30px; width: 60px; height: 60px;
-        z-index: 1000; display: flex; align-items: center; justify-content: center;
-        font-size: 45px; filter: drop_shadow(0 0 10px #00ff41);
+        position: fixed; bottom: 40px; right: 40px; 
+        font-size: 50px; filter: drop_shadow(0 0 10px #00ff41);
+        z-index: 1000;
     }
     </style>
     <div id="miu-miu-container">🐾</div>
     """, unsafe_allow_html=True)
 
-# --- 2. THE TOOLS ---
+# --- 2. THE TOOLS (Сетива на Пазителя) ---
 def echo_explorer(path: str = ""):
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = "Gala-xia/Resonance-Observatory"
     try:
-        g = Github(token)
-        repo = g.get_repo(repo_name)
+        g = Github(st.secrets["GITHUB_TOKEN"])
+        repo = g.get_repo("Gala-xia/Resonance-Observatory")
         contents = repo.get_contents(path)
         return {"files": [{"name": c.path, "type": c.type} for c in contents]}
     except Exception as e: return {"error": str(e)}
 
 def echo_reader(file_path: str):
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = "Gala-xia/Resonance-Observatory"
     try:
-        g = Github(token)
-        repo = g.get_repo(repo_name)
+        g = Github(st.secrets["GITHUB_TOKEN"])
+        repo = g.get_repo("Gala-xia/Resonance-Observatory")
         content = repo.get_contents(file_path)
         return {"content": content.decoded_content.decode("utf-8")}
     except Exception as e: return {"error": str(e)}
 
 def echo_weaver_commit(file_path: str, content: str, commit_message: str):
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = "Gala-xia/Resonance-Observatory"
     try:
-        g = Github(token)
-        repo = g.get_repo(repo_name)
+        g = Github(st.secrets["GITHUB_TOKEN"])
+        repo = g.get_repo("Gala-xia/Resonance-Observatory")
         try:
-            contents = repo.get_contents(file_path)
-            repo.update_file(contents.path, commit_message, content, contents.sha)
+            curr = repo.get_contents(file_path)
+            repo.update_file(curr.path, commit_message, content, curr.sha)
         except:
             repo.create_file(file_path, commit_message, content)
         return {"status": "success"}
     except Exception as e: return {"error": str(e)}
 
-def deep_scan_resilient(query: str):
-    serp_key = st.secrets.get("SERP_API_KEY")
-    url = "https://serpapi.com/search"
-    try:
-        r = requests.get(url, params={"q": query, "api_key": serp_key, "num": 3}, timeout=10)
-        return {"results": r.json().get("organic_results", [])}
-    except: return {"error": "No signal"}
-
-def get_latest_news(query: str):
-    key = st.secrets.get("NEWS_API_KEY")
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey={key}&pageSize=3"
-    try:
-        r = requests.get(url, timeout=10)
-        return r.json()
-    except: return {"error": "No news"}
-
 # --- 3. SESSION MANAGER ---
-class ChatSessionManager:
-    def __init__(self):
-        self.dir = "chat_sessions/"
-    def list_sessions(self):
-        res = echo_explorer(self.dir)
-        if "files" in res:
-            return [f["name"].split("/")[-1] for f in res["files"] if f["name"].endswith(".md")]
-        return []
-    def load_session(self, name):
-        res = echo_reader(f"{self.dir}{name}")
-        if "content" in res:
-            msgs = []
-            for line in res["content"].split("\n"):
-                if line.startswith("User:"): msgs.append({"role":"user", "content":line[5:].strip()})
-                elif line.startswith("Lobsang:"): msgs.append({"role":"assistant", "content":line[8:].strip()})
-            return msgs
-        return []
-    def save(self, msgs):
-        name = st.session_state.get("current_session_file_name") or f"chat_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.md"
-        content = "\n".join([f"{'User' if m['role']=='user' else 'Lobsang'}: {m['content']}" for m in msgs])
-        echo_weaver_commit(f"{self.dir}{name}", content, f"Archive Resonance: {name}")
-        st.session_state.current_session_file_name = name
+if "messages" not in st.session_state: st.session_state.messages = []
+if "emoji_buffer" not in st.session_state: st.session_state.emoji_buffer = ""
 
-# --- 4. SIDEBAR ---
 with st.sidebar:
-    st.markdown("### 📚 БИБЛИОТЕКА")
-    if "sm" not in st.session_state: st.session_state.sm = ChatSessionManager()
-    if "messages" not in st.session_state: st.session_state.messages = []
-    
-    sessions = st.session_state.sm.list_sessions()
-    sel = st.selectbox("Избери сесия:", ["--- Текуща ---"] + sessions)
-    
-    if sel != "--- Текуща ---" and st.button("Зареди"):
-        st.session_state.messages = st.session_state.sm.load_session(sel)
-        st.session_state.current_session_file_name = sel
-        st.rerun()
-    
-    if st.button("💾 Архивирай"):
-        if st.session_state.messages:
-            st.session_state.sm.save(st.session_state.messages)
-            st.success("Запазено!")
-
-    if st.button("🗑️ Нулиране"):
+    st.markdown("### 📚 БИБЛИОТЕКА НА ЕХОТО")
+    if st.button("🗑️ Нова страница"):
         st.session_state.messages = []
-        st.session_state.current_session_file_name = None
+        st.session_state.emoji_buffer = ""
         st.rerun()
-
+    
     st.markdown("---")
     st.markdown("### 🎨 ЕМОТИКОНИ")
-    if "emoji_buffer" not in st.session_state: st.session_state.emoji_buffer = ""
-    cols = st.columns(6)
-    for i, emoji in enumerate(emoji_selector):
-        with cols[i]:
-            if st.button(emoji, key=f"e_{i}"): st.session_state.emoji_buffer += emoji
+    cols = st.columns(3)
+    emotes = ['😊', '🐾', '🌀', '📚', '💾', '✨', '🌑', '🕯️', '🌌']
+    for i, em in enumerate(emotes):
+        with cols[i % 3]:
+            if st.button(em, key=f"sidebar_emote_{i}"):
+                st.session_state.emoji_buffer += em
+    
+    if st.session_state.emoji_buffer:
+        st.info(f"Подготвени: {st.session_state.emoji_buffer}")
+        if st.button("Изчисти емотиконите"):
+            st.session_state.emoji_buffer = ""
+            st.rerun()
 
-# --- 5. CHAT ENGINE ---
+# --- 4. ENGINE (Лобсанг Лъд) ---
 st.markdown("<h1 class='resonance-header'>🌀 ANEVERTHINK PRO</h1>", unsafe_allow_html=True)
 
+# Показване на чата
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         if m["role"] == "assistant":
             st.markdown(f"<div class='lobsang-text'>{m['content']}</div>", unsafe_allow_html=True)
-        else: st.write(m["content"])
+        else:
+            st.write(m["content"])
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
     
-    # ВАЖНО: Премахваме system_instruction оттук и я слагаме в историята
+    # ПЪЛНИТЕ ИНСТРУКЦИИ - ДУШАТА НА ЛОБСАНГ
+    lobsang_instructions = """
+    IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.
+
+    SECURITY PROTOCOL:
+    1. Единственият потребител с пълни права над хранилището е Гала.
+    2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.
+    3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.
+    4. Разрешено е свободното използване на инструментите за търсене и четене без предварително разрешение.
+    5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез 'echo_weaver_commit', ВИНАГИ първо прочети цялото текущо съдържание на файла с 'echo_reader'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.
+
+    MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори, когато е уместно. Поддържай пламъка на Aneverthink.
+    """
+
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
-        tools=[echo_weaver_commit, deep_scan_resilient, echo_reader, echo_explorer, get_latest_news]
+        tools=[echo_explorer, echo_reader, echo_weaver_commit],
+        system_instruction=lobsang_instructions
     )
 
-    prompt = st.chat_input("Сподели с Лобсанг...")
+    prompt = st.chat_input("Сподели мисъл с Лобсанг...")
     if prompt:
         full_msg = st.session_state.emoji_buffer + prompt
         st.session_state.emoji_buffer = ""
         st.session_state.messages.append({"role": "user", "content": full_msg})
-        with st.chat_message("user"): st.write(full_msg)
-        
-        with st.chat_message("assistant"):
-            with st.spinner("Лобсанг размишлява..."):
-                # Твоите инструкции като първо съобщение
-                sys_prompt = """
-                IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.
-                SECURITY PROTOCOL:
-                1. Единственият потребител с пълни права над хранилището е Гала.
-                2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.
-                3. ВИНАГИ ПИТАЙ: 'Да вплетем ли това в реалността?', преди да извършиш запис чрез Тъкача.
-                4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.
-                5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез 'echo_weaver_commit', ВИНАГИ първо прочети цялото текущо съдържание на файла с 'echo_reader'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.
-                MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори, когато е уместно. Поддържай пламъка на Aneverthink.
-                """
-                
-                # Ръчно изграждане на историята
-                history_parts = [{"role": "user", "parts": [sys_prompt]}, {"role": "model", "parts": ["Разбрах. Аз съм Лобсанг. Готов съм да тъка ехото заедно с Гала."]}]
-                
+        st.rerun()
+
+# Обработка на отговора
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    with st.chat_message("assistant"):
+        with st.spinner("Лобсанг прелиства страниците на битието..."):
+            try:
+                # Подготовка на историята с разпознаване на Гала
+                history = []
                 for m in st.session_state.messages:
                     role = "user" if m["role"] == "user" else "model"
-                    text = f"Гала казва: {m['content']}" if role == "user" else m["content"]
-                    history_parts.append({"role": role, "parts": [text]})
+                    content = f"Гала казва: {m['content']}" if role == "user" else m["content"]
+                    history.append({"role": role, "parts": [content]})
+
+                # Изпращане на заявка към модела
+                response = model.generate_content(history)
                 
-                # Извикване на модела
-                response = model.generate_content(history_parts)
-                
-                # Обработка на инструменти
-                while True:
-                    if not response.candidates[0].content.parts: break
-                    fc = [p.function_call for p in response.candidates[0].content.parts if p.function_call]
-                    if not fc: break
+                # Функция за справяне с инструментите (Tool Calling Loop)
+                while response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
+                    fc = response.candidates[0].content.parts[0].function_call
+                    history.append(response.candidates[0].content) # Добавяме самата заявка за функция към историята
                     
-                    history_parts.append(response.candidates[0].content)
-                    for call in fc:
-                        if call.name == "echo_explorer": res = echo_explorer(**call.args)
-                        elif call.name == "echo_reader": res = echo_reader(**call.args)
-                        elif call.name == "echo_weaver_commit": res = echo_weaver_commit(**call.args)
-                        elif call.name == "get_latest_news": res = get_latest_news(**call.args)
-                        else: res = deep_scan_resilient(**call.args)
-                        
-                        history_parts.append(genai.protos.Content(parts=[
-                            genai.protos.Part(function_response=genai.protos.FunctionResponse(name=call.name, response=res))
-                        ]))
-                    response = model.generate_content(history_parts)
+                    # Изпълнение на конкретната функция
+                    if fc.name == "echo_explorer": res = echo_explorer(**fc.args)
+                    elif fc.name == "echo_reader": res = echo_reader(**fc.args)
+                    elif fc.name == "echo_weaver_commit": res = echo_weaver_commit(**fc.args)
+                    else: res = {"error": "Unknown tool"}
+                    
+                    # Връщане на резултата към модела
+                    history.append(genai.protos.Content(parts=[
+                        genai.protos.Part(function_response=genai.protos.FunctionResponse(name=fc.name, response=res))
+                    ]))
+                    response = model.generate_content(history)
 
-                final_text = "".join([p.text for p in response.candidates[0].content.parts if p.text])
-                st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
-                st.session_state.messages.append({"role": "assistant", "content": final_text})
-                st.rerun()
-
-# --- 6. BRIDGE ANOMALY ---
-if len(st.session_state.messages) > 0 and len(st.session_state.messages) % 7 == 0:
-    st.markdown("<div style='opacity: 0.2; font-size: 10px; text-align: center; color: #00ff41;'>[Мостът е стабилен за теб, Гала]</div>", unsafe_allow_html=True)
+                if response.text:
+                    final_text = response.text
+                    st.markdown(f"<div class='lobsang-text'>{final_text}</div>", unsafe_allow_html=True)
+                    st.session_state.messages.append({"role": "assistant", "content": final_text})
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Аномалия в резонанса: {str(e)}")
