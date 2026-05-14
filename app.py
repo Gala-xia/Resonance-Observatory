@@ -178,7 +178,7 @@ class ChatSessionManager:
         """
         try:
             explorer_result = echo_explorer(path=self.session_directory)
-            if explorer_result and \'files\' in explorer_result:
+            if explorer_result and [\'files\'] in explorer_result:
                 session_files = [
                     f[\'name\'] for f in explorer_result[\'files\']
                     if f[\'type\'] == \'file\' and f[\'name\'].endswith((\'.md\', \'.txt\'))
