@@ -25,6 +25,14 @@ st.markdown("""
         border-left: 5px solid #00ff41;
         line-height: 1.6;
         margin-bottom: 20px;
+        font-size: 1.1em; /* Добавен базов размер на шрифта */
+    }
+   
+    /* Media query за мобилни устройства */
+    @media (max-width: 768px) {
+        .lobsang-text {
+            font-size: 1.25em; /* По-голям шрифт за мобилни */
+        }
     }
    
     .resonance-header { color: #00ff41; font-family: serif; text-align: center; letter-spacing: 5px; margin-bottom: 20px; }
