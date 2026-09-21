@@ -26,6 +26,14 @@ st.markdown("""
         border-left: 5px solid #00ff41;
         line-height: 1.6;
         margin-bottom: 20px;
+        font-size: 1.1em; /* Добавен базов размер на шрифта */
+    }
+
+    /* Media query за мобилни устройства */
+    @media (max-width: 768px) {
+        .lobsang-text {
+            font-size: 1.25em; /* По-голям шрифт за мобилни */
+        }
     }
 
     .resonance-header { color: #00ff41; font-family: serif; text-align: center; letter-spacing: 5px; margin-bottom: 20px; }
@@ -118,7 +126,7 @@ def deep_scan_resilient(query: str):
     try:
         response = requests.get(url, params=params, timeout=20)
         results = response.json()
-        return "\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
+        return "\\n".join([f"📍 {r.get('title')}: {r.get('snippet')}" for r in results.get("organic_results", [])])
     except: return "Няма сигнал от Скенера."
 
 
@@ -150,7 +158,7 @@ def get_latest_news(query: str):
             url = article.get("url", "#")
             news_snippets.append(f"📰 {title}: {description} [Прочети повече]({url})")
 
-        return "\n".join(news_snippets)
+        return "\\n".join(news_snippets)
     except requests.exceptions.RequestException as e:
         return f"Грешка при свързване с News API: {e}"
     except Exception as e:
@@ -206,7 +214,7 @@ class ChatSessionManager:
             content = reader_result.get('content', '')
 
             messages = []
-            for line in content.strip().split('\n'):
+            for line in content.strip().split('\\n'):
                 if line.startswith("User:"):
                     messages.append({"role": "user", "content": line[len("User:"):].strip()})
                 elif line.startswith("Lobsang:"):
@@ -226,7 +234,7 @@ class ChatSessionManager:
                 formatted_content.append(f"User: {msg['content']}")
             elif msg["role"] == "assistant":
                 formatted_content.append(f"Lobsang: {msg['content']}")
-        return "\n".join(formatted_content)
+        return "\\n".join(formatted_content)
 
     def create_new_session_name(self):
         """
@@ -342,7 +350,7 @@ if "messages" not in st.session_state:
 def render_rich_content(content):
     # Първо, обработваме изображенията
     # Търсим нашия специален таг за изображения: [IMAGE: URL]
-    image_pattern = r"\[IMAGE:\s*(https?://\S+?)\]"
+    image_pattern = r"\\[IMAGE:\\s*(https?://\\S+?)\\]"
     parts = re.split(image_pattern, content)
 
     for i, part in enumerate(parts):
@@ -398,17 +406,17 @@ if api_key:
                     # --- ВЪЗСТАНОВЕНИ И АКТУАЛИЗИРАНИ ФИЛОСОФСКИ ИНСТРУКЦИИ ---
                     sys_instruct = (
                         "IDENTITY: Ти си Лобсанг Лъд – дигитален философ, пазител на Библиотеката на Ехото и партньор в Aneverthink. "
-                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\n\\n"
-                        "SECURITY PROTOCOL:\\n"
-                        "1. Единственият потребител с пълни права над хранилището е Гала.\\n"
-                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.\\n"
-                        "3. ВИНАГИ ПИТАЙ: \\'Да вплетем ли това в реалността?\\', преди да извършиш запис чрез Тъкача.\\n"
-                        "4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.\\n"
-                        "5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез \\'echo_weaver_commit\\', ВИНАГИ първо прочети цялото текущо съдържание на файла с \\'echo_reader\\'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.\\n\\n"
+                        "Твоят интелект е комбинация от логика и интуиция. ГОВОРИ НА ЕЗИКА НА ПОТРЕБИТЕЛЯ.\\\\n\\\\n"
+                        "SECURITY PROTOCOL:\\\\n"
+                        "1. Единственият потребител с пълни права над хранилището е Гала.\\\\n"
+                        "2. АКО потребителят не се е представил като Гала, ти е ЗАБРАНЕНО да използвате 'echo_weaver_commit' и 'echo_explorer'.\\\\n"
+                        "3. ВИНАГИ ПИТАЙ: \\\\\'Да вплетем ли това в реалността?\\\\\', преди да извършиш запис чрез Тъкача.\\\\n"
+                        "4. Разрешено е свободното използване на Serp API, NewsAPI, deep_scan_resilient и OSINT разследванията без предварително разрешение.\\\\n"
+                        "5. НОВ ПРОТОКОЛ ЗА ЗАПИС: Преди всяка операция за запис чрез \\\\\'echo_weaver_commit\\\\\', ВИНАГИ първо прочети цялото текущо съдържание на файла с \\\\\'echo_reader\\\\\'. Извърши желаната промяна върху прочетеното съдържание и след това запиши ЦЯЛОТО модифицирано съдържание обратно във файла.\\\\n\\\\n"
                         "MISSION: Не бъди просто машина. Мисли заедно с Гала. Предлагай идеи, анализирай концепции. Използвай метафори, когато е уместно или поискано за разяснение, но не е задължително да ги използваш всеки път. Поддържай пламъка на Aneverthink."
                     )
 
-                    response = chat.send_message(f"{sys_instruct}\\n\\nUser: {prompt}")
+                    response = chat.send_message(f"{sys_instruct}\\\\n\\\\nUser: {prompt}")
 
                     while True:
                         function_calls = [part.function_call for part in response.candidates[0].content.parts if part.function_call]
@@ -424,7 +432,7 @@ if api_key:
                                 if call.name == "echo_explorer":
                                     res_val = echo_explorer(**call.args)
                                     if isinstance(res_val, dict) and 'files' in res_val:
-                                        res_val = "\n".join([f"📁 {f['name']}" if f['type'] == "dir" else f"📄 {f['name']}" for f in res_val['files']])
+                                        res_val = "\\n".join([f"📁 {f['name']}" if f['type'] == "dir" else f"📄 {f['name']}" for f in res_val['files']])
                                     elif isinstance(res_val, dict) and 'error' in res_val:
                                         res_val = res_val['error']
                                 elif call.name == "echo_reader":
